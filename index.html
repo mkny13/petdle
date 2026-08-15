@@ -354,7 +354,7 @@
 </header>
 
 <main>
-  <div id="length-note">Today's pet has <b id="len-count">5</b> letters</div>
+  <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters</div>
   <div id="board-wrap"><div id="board"></div></div>
 </main>
 
@@ -366,7 +366,8 @@
   <div class="card">
     <h2>How to play Petle 🐾</h2>
     <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
-    <p>Every guess must be the right number of letters. The tiles change color to show how close you are.</p>
+    <p>The line above the board is your hint: it names the <strong>category</strong> and the <strong>length</strong>, so a 9-letter dog breed is a much smaller haystack than "some pet".</p>
+    <p>Every guess has to be a real <strong>animal</strong> of the right length — but any animal counts, not just pets. Hunting an 8-letter cat breed? <strong>elephant</strong> is a perfectly good way to test letters. The tiles change color to show how close you are.</p>
     <div class="example">
       <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
     </div>
@@ -399,40 +400,177 @@
   "use strict";
 
   /* ---------------------------------------------------------------
-     Word list: pet types and specific breeds, 3-12 letters, a-z only.
-     Order does not matter — it is sorted below so the daily pick is
-     stable no matter how the list is edited above.
+     Word list: pet types and specific breeds, 3-12 letters, a-z only,
+     grouped by the category shown as a hint above the board. Without
+     the hint, longer answers are close to unguessable.
+
+     A word belongs to exactly one category — if it appears twice, the
+     first group wins. Group order does not matter: the flattened list
+     is sorted below so the daily pick is stable no matter how the
+     groups are edited above.
   ----------------------------------------------------------------*/
-  var WORDS = [
-    // general pets
-    "cat", "dog", "rat", "pig", "hen", "koi", "fish", "bird", "frog", "toad",
-    "newt", "duck", "goat", "pony", "crab", "mouse", "horse", "snake", "snail",
-    "gecko", "puppy", "kitten", "bunny", "rabbit", "ferret", "gerbil", "parrot",
-    "turtle", "lizard", "iguana", "donkey", "alpaca", "llama", "python",
-    "hamster", "chicken", "hedgehog", "tortoise", "goldfish", "chinchilla",
-    "tarantula", "salamander", "chameleon", "axolotl", "guppy", "betta",
-    "angelfish", "clownfish", "catfish", "swordtail", "tetra", "molly", "platy",
-    "danio", "oscar", "canary", "finch", "budgie", "macaw", "cockatoo",
-    "cockatiel", "parakeet", "lovebird", "conure", "lorikeet", "pigeon", "skink",
-    "anole", "degu",
-    // dog breeds
-    "pug", "boxer", "husky", "corgi", "collie", "beagle", "poodle", "bulldog",
-    "terrier", "spaniel", "mastiff", "pointer", "setter", "sheepdog", "whippet",
-    "greyhound", "dachshund", "labrador", "retriever", "chihuahua", "dalmatian",
-    "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
-    "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
-    "saluki", "basenji", "pekingese", "bernese", "shepherd",
-    // cat breeds
-    "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
-    "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
-    "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
-    "korat", "balinese",
-    // rabbit / small pet breeds
-    "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
+  var GROUPS = [
+    ["Kind of pet", [
+      "cat", "dog", "fish", "bird", "puppy", "kitten", "bunny"
+    ]],
+    ["Small furry pet", [
+      "rat", "mouse", "hamster", "gerbil", "ferret", "rabbit", "hedgehog",
+      "chinchilla", "degu"
+    ]],
+    ["Farm or backyard pet", [
+      "pig", "hen", "duck", "goat", "pony", "horse", "donkey", "llama",
+      "alpaca", "chicken"
+    ]],
+    ["Pet bird", [
+      "parrot", "canary", "finch", "budgie", "macaw", "pigeon", "conure",
+      "lovebird", "lorikeet", "parakeet", "cockatoo", "cockatiel"
+    ]],
+    ["Fish or aquarium pet", [
+      "koi", "betta", "guppy", "tetra", "molly", "platy", "danio", "oscar",
+      "catfish", "goldfish", "angelfish", "clownfish", "swordtail"
+    ]],
+    ["Reptile or amphibian", [
+      "frog", "toad", "newt", "snake", "gecko", "skink", "anole", "turtle",
+      "lizard", "iguana", "python", "axolotl", "tortoise", "chameleon",
+      "salamander"
+    ]],
+    ["Creepy-crawly pet", [
+      "crab", "snail", "tarantula"
+    ]],
+    ["Dog breed", [
+      "pug", "boxer", "husky", "corgi", "collie", "beagle", "poodle", "bulldog",
+      "terrier", "spaniel", "mastiff", "pointer", "setter", "sheepdog", "whippet",
+      "greyhound", "dachshund", "labrador", "retriever", "chihuahua", "dalmatian",
+      "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
+      "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
+      "saluki", "basenji", "pekingese", "bernese", "shepherd"
+    ]],
+    ["Cat breed", [
+      "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
+      "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
+      "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
+      "korat", "balinese"
+    ]],
+    ["Rabbit breed", [
+      "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
+    ]]
   ];
 
-  // De-duplicate + sort so the index for a given day never drifts.
-  WORDS = WORDS.filter(function (w, i) { return WORDS.indexOf(w) === i; }).sort();
+  // Flatten to a de-duplicated, sorted list so the index for a given day
+  // never drifts, keeping each word's category alongside it.
+  var CATEGORY_OF = {};
+  var WORDS = [];
+  GROUPS.forEach(function (group) {
+    group[1].forEach(function (w) {
+      if (CATEGORY_OF.hasOwnProperty(w)) return;
+      CATEGORY_OF[w] = group[0];
+      WORDS.push(w);
+    });
+  });
+  WORDS.sort();
+
+  /* ---------------------------------------------------------------
+     Guess list. A guess must be a real animal word — but any animal
+     counts, not just pets, so you can freely probe letters with
+     "elephant" while hunting an 8-letter cat breed.
+
+     These are the animals that are NOT possible answers; every word in
+     GROUPS above is automatically a legal guess too. Lengths run 3-10
+     to match the answers — an 11-letter word can never be typed,
+     because the board is always exactly as wide as the day's pet.
+
+     Breeds are included alongside wild animals: the hint often says
+     "Dog breed", so players type dog breeds, and rejecting a real one
+     feels like a bug. Add more here freely — this list only widens
+     what is accepted and never changes which pet is the answer.
+  ----------------------------------------------------------------*/
+  var OTHER_ANIMALS = [
+    // mammals
+    "ape", "bat", "cow", "cub", "doe", "elk", "ewe", "fox", "gnu", "hog",
+    "kid", "pup", "ram", "sow", "yak", "bear", "boar", "buck", "bull", "calf",
+    "cavy", "colt", "deer", "fawn", "foal", "hare", "ibex", "joey", "koala",
+    "kudu", "lamb", "lion", "lynx", "mare", "mink", "mole", "mule", "oryx",
+    "puma", "seal", "stag", "vole", "zebu", "bison", "bilby", "bongo", "burro",
+    "camel", "chimp", "civet", "coati", "coypu", "dhole", "dingo", "eland",
+    "fossa", "genet", "hippo", "hyena", "hyrax", "lemur", "moose", "okapi",
+    "otter", "panda", "quoll", "rhino", "sable", "sheep", "shrew", "skunk",
+    "sloth", "stoat", "tapir", "tiger", "whale", "zebra", "baboon", "badger",
+    "beaver", "bobcat", "bonobo", "cattle", "cougar", "coyote", "dugong",
+    "gibbon", "gopher", "impala", "jackal", "jaguar", "jerboa", "langur",
+    "marmot", "marten", "monkey", "muskox", "nutria", "ocelot", "onager",
+    "possum", "quagga", "serval", "walrus", "weasel", "wombat", "buffalo",
+    "caribou", "chamois", "cheetah", "colobus", "dolphin", "gazelle", "gelding",
+    "giraffe", "grizzly", "guanaco", "lemming", "leopard", "macaque", "mammoth",
+    "manatee", "meerkat", "muskrat", "narwhal", "opossum", "panther", "polecat",
+    "primate", "raccoon", "tamarin", "wallaby", "warthog", "wildcat", "aardvark",
+    "antelope", "chipmunk", "dormouse", "elephant", "kangaroo", "mandrill",
+    "marmoset", "mongoose", "mudpuppy", "pangolin", "platypus", "porpoise",
+    "reindeer", "ringtail", "squirrel", "stallion", "yearling", "armadillo",
+    "bandicoot", "groundhog", "orangutan", "porcupine", "springbok", "wolverine",
+    "chimpanzee", "cottontail", "rhinoceros", "wildebeest",
+    // birds
+    "auk", "emu", "jay", "owl", "coot", "crow", "dodo", "dove", "gull", "hawk",
+    "ibis", "kiwi", "lark", "loon", "myna", "rook", "skua", "swan", "teal",
+    "tern", "wren", "crane", "drake", "eagle", "egret", "goose", "grebe",
+    "heron", "quail", "raven", "robin", "snipe", "stork", "swift", "bustard",
+    "buzzard", "condor", "cuckoo", "curlew", "falcon", "gannet", "grouse",
+    "hoopoe", "magpie", "merlin", "oriole", "osprey", "petrel", "plover",
+    "siskin", "thrush", "toucan", "turkey", "bunting", "goshawk", "grackle",
+    "harrier", "jackdaw", "kestrel", "lapwing", "mallard", "ostrich", "peacock",
+    "peafowl", "pelican", "penguin", "pintail", "redwing", "rooster", "seagull",
+    "skylark", "sparrow", "vulture", "warbler", "waxwing", "blackcap", "bluebird",
+    "cardinal", "flamingo", "hornbill", "nightjar", "nuthatch", "ovenbird",
+    "pheasant", "songbird", "starling", "titmouse", "wildfowl", "woodcock",
+    "albatross", "blackbird", "cassowary", "chaffinch", "chickadee", "cormorant",
+    "goldcrest", "guillemot", "razorbill", "sandpiper", "sapsucker", "sheldrake",
+    "spoonbill", "waterbird", "waterfowl", "budgerigar", "flycatcher",
+    "greenfinch", "kingfisher", "kookaburra", "roadrunner", "sandgrouse",
+    "shearwater", "turtledove", "weaverbird", "woodpecker",
+    // water
+    "cod", "eel", "ray", "bass", "carp", "chub", "clam", "orca", "pike",
+    "shad", "sole", "tuna", "bream", "coral", "krill", "manta", "perch", "prawn",
+    "shark", "squid", "trout", "whelk", "limpet", "minnow", "mullet", "mussel",
+    "oyster", "salmon", "shrimp", "sponge", "urchin", "anchovy", "beluga",
+    "dogfish", "gudgeon", "haddock", "halibut", "herring", "lamprey", "lobster",
+    "mollusc", "pollock", "sardine", "sawfish", "scallop", "sculpin", "sunfish",
+    "tilapia", "walleye", "whiting", "barnacle", "blowfish", "bluegill",
+    "crawfish", "flounder", "kingfish", "mackerel", "nautilus", "sailfish",
+    "seahorse", "skipjack", "starfish", "stingray", "sturgeon", "arapaima",
+    "barracuda", "jellyfish", "shellfish", "stonefish", "swordfish", "zebrafish",
+    "cuttlefish", "hammerhead", "loggerhead", "mudskipper", "nudibranch",
+    "periwinkle", "silverfish", "yellowtail",
+    // reptiles and amphibians
+    "asp", "boa", "adder", "cobra", "mamba", "viper", "caiman", "gharial",
+    "monitor", "taipan", "tuatara", "tadpole", "reptile", "anaconda", "basilisk",
+    "bullfrog", "slowworm", "terrapin", "alligator", "boomslang", "crocodile",
+    "kingsnake", "sidewinder",
+    // bugs and crawlies
+    "ant", "bee", "bug", "fly", "flea", "gnat", "mite", "moth", "slug", "tick",
+    "wasp", "worm", "aphid", "louse", "midge", "roach", "cicada", "earwig",
+    "hornet", "insect", "locust", "maggot", "mantis", "mayfly", "spider",
+    "weevil", "arachnid", "chigger", "cricket", "firefly", "honeybee",
+    "housefly", "katydid", "ladybird", "mosquito", "scorpion", "silkworm",
+    "whitefly", "bumblebee", "butterfly", "centipede", "damselfly", "dragonfly",
+    "earthworm", "millipede", "woodlouse", "leafhopper",
+    // breeds beyond the answer list
+    "lop", "plott", "satin", "spitz", "bichon", "briard", "kuvasz", "silver",
+    "somali", "sokoke", "toyger", "westie", "yorkie", "cymric", "laperm",
+    "minuet", "lykoi", "arabian", "bambino", "chausie", "donskoy", "mustang",
+    "shihtzu", "brittany", "cavalier", "cockapoo", "elkhound", "foxhound",
+    "javanese", "keeshond", "komondor", "maltipoo", "nebelung", "oriental",
+    "pinscher", "boerboel", "cinnamon", "palomino", "shetland", "chartreux",
+    "coonhound", "deerhound", "peterbald", "serengeti", "staghound", "wolfhound",
+    "appaloosa", "bloodhound", "clydesdale", "highlander", "leonberger",
+    "otterhound", "ragamuffin", "schipperke", "weimaraner"
+  ];
+
+  // Any word above, plus every possible answer, is a legal guess.
+  var VALID_GUESS = {};
+  WORDS.concat(OTHER_ANIMALS).forEach(function (w) { VALID_GUESS[w] = true; });
+
+  function isAnimal(word) {
+    return Object.prototype.hasOwnProperty.call(VALID_GUESS, word);
+  }
 
   var MAX_GUESSES = 12;
 
@@ -458,6 +596,7 @@
   var DATE_KEY = localDateKey();
   var ANSWER = WORDS[hashString("petle-" + DATE_KEY) % WORDS.length];
   var LEN = ANSWER.length;
+  var CATEGORY = CATEGORY_OF[ANSWER];
 
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);
@@ -528,6 +667,7 @@
   var toastEl = document.getElementById("toast");
 
   document.getElementById("len-count").textContent = LEN;
+  document.getElementById("category").textContent = CATEGORY;
   document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
 
   function buildBoard() {
@@ -652,12 +792,22 @@
     }
   }
 
+  // Bounce the in-progress row back at the player without using up a guess.
+  function reject(msg) {
+    var row = rowEl(guesses.length);
+    row.classList.add("shake");
+    setTimeout(function () { row.classList.remove("shake"); }, 400);
+    toast(msg);
+  }
+
   function submit() {
     if (current.length < LEN) {
-      var row = rowEl(guesses.length);
-      row.classList.add("shake");
-      setTimeout(function () { row.classList.remove("shake"); }, 400);
-      toast(current.length === 0 ? "Type a guess first" : "Needs " + LEN + " letters");
+      reject(current.length === 0 ? "Type a guess first" : "Needs " + LEN + " letters");
+      return;
+    }
+
+    if (!isAnimal(current)) {
+      reject("Not an animal we know 🐾");
       return;
     }
 

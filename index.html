@@ -116,6 +116,26 @@
 
   #length-note b { color: var(--accent); }
 
+  #clue {
+    flex: none;
+    display: none;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--accent);
+    text-align: center;
+    max-width: 32ch;
+    padding: 0 8px;
+  }
+
+  #clue.show { display: block; }
+
+  .icon-btn[disabled] { opacity: .4; cursor: default; }
+
+  header .right {
+    display: flex;
+    gap: 6px;
+  }
+
   #board-wrap {
     flex: 1 1 auto;
     min-height: 0;
@@ -350,11 +370,15 @@
     <h1><span class="paw">🐾</span> Petle</h1>
     <div class="sub" id="puzzle-no">Daily pet word</div>
   </div>
-  <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
+  <div class="right">
+    <button class="icon-btn" id="hint-btn" aria-label="Get a hint">💡</button>
+    <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
+  </div>
 </header>
 
 <main>
   <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters</div>
+  <div id="clue"></div>
   <div id="board-wrap"><div id="board"></div></div>
 </main>
 
@@ -367,6 +391,7 @@
     <h2>How to play Petle 🐾</h2>
     <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
     <p>The line above the board is your hint: it names the <strong>category</strong> and the <strong>length</strong>, so a 9-letter dog breed is a much smaller haystack than "some pet".</p>
+    <p>Stuck? Tap <strong>💡</strong> for a clue about today's pet. Tap it again and it tells you the first letter. Hints don't cost you a guess — they just show up on your shared result.</p>
     <p>Every guess has to be a real <strong>animal</strong> of the right length — but any animal counts, not just pets. Hunting an 8-letter cat breed? <strong>elephant</strong> is a perfectly good way to test letters. The tiles change color to show how close you are.</p>
     <div class="example">
       <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
@@ -468,6 +493,162 @@
     });
   });
   WORDS.sort();
+
+  /* ---------------------------------------------------------------
+     Clues, one per answer, shown when the player asks for a hint.
+     Describe the animal without using its name — and without leaning on
+     the category, which is already on screen. Any answer missing an
+     entry here still gets the starting-letter hint, so a new word won't
+     break the button.
+  ----------------------------------------------------------------*/
+  var CLUES = {
+    // kinds of pet
+    "cat": "Purrs, naps in sunbeams, ignores you on purpose.",
+    "dog": "Wags, fetches, thinks you hung the moon.",
+    "fish": "Lives behind glass and blows bubbles.",
+    "bird": "Feathers, a beak, and opinions about dawn.",
+    "puppy": "A dog that hasn't grown into its paws yet.",
+    "kitten": "A cat still small enough to fit in a shoe.",
+    "bunny": "The soft, hoppy, kid's word for a rabbit.",
+    // small furry
+    "rat": "Clever, social rodent with a long bare tail.",
+    "mouse": "Tiny rodent; also the thing beside your keyboard.",
+    "hamster": "Stuffs its cheeks and runs the wheel all night.",
+    "gerbil": "Tuft-tailed desert rodent, always digging.",
+    "ferret": "A long, bendy weasel cousin that sleeps most of the day.",
+    "rabbit": "Long ears, twitchy nose, thumps when cross.",
+    "hedgehog": "Rolls into a prickly ball when startled.",
+    "chinchilla": "Andean rodent with the softest fur alive; bathes in dust.",
+    "degu": "Chilean rodent, like a gerbil with a brush-tipped tail.",
+    // farm and backyard
+    "pig": "Pink, curly-tailed, and smarter than most dogs.",
+    "hen": "The female one; she lays the breakfast.",
+    "duck": "Webbed feet, waterproof back, loud about it.",
+    "goat": "Eats anything, climbs everything, rectangular pupils.",
+    "pony": "A small horse, permanently stout and stubborn.",
+    "horse": "Hooves, mane, and a saddle.",
+    "donkey": "Long ears, sure feet, and a bray you hear for miles.",
+    "llama": "Andean pack animal that spits when it's had enough.",
+    "alpaca": "Smaller, fluffier cousin of the llama, kept for fleece.",
+    "chicken": "Clucks, pecks, and started the oldest argument about eggs.",
+    // birds
+    "parrot": "Hooked beak, bright feathers, repeats what you say.",
+    "canary": "Little yellow songbird once carried down coal mines.",
+    "finch": "Small seed-eating songbird, happiest in a pair.",
+    "budgie": "Small Australian parakeet, blue or green, and a fine talker.",
+    "macaw": "Huge, brilliant, long-tailed parrot of the rainforest.",
+    "pigeon": "City bird that can find its way home across hundreds of miles.",
+    "conure": "Small, loud, clownish parrot from South America.",
+    "lovebird": "Tiny African parrot that pairs up for life.",
+    "lorikeet": "Rainbow-coloured, with a brush tongue for nectar.",
+    "parakeet": "The general name for any small, long-tailed parrot.",
+    "cockatoo": "White parrot that raises its crest like a crown.",
+    "cockatiel": "Small grey Australian bird with orange cheeks and a crest.",
+    // fish
+    "koi": "Big ornamental carp circling a garden pond.",
+    "betta": "Jewel-finned fighter that must be kept alone.",
+    "guppy": "Tiny, tireless breeder; the beginner's first fish.",
+    "tetra": "Little shoaling fish wearing a neon stripe.",
+    "molly": "Hardy livebearer, often velvet black.",
+    "platy": "Small, peaceful, orange tank-mate that bothers nobody.",
+    "danio": "Zippy striped shoaler that is very hard to kill.",
+    "oscar": "Big-personality cichlid that learns who feeds it.",
+    "catfish": "Bottom-feeder with whiskers.",
+    "goldfish": "The classic bowl fish, won at fairgrounds.",
+    "angelfish": "Tall triangle with trailing fins, the tank's centrepiece.",
+    "clownfish": "Orange and white, at home in a stinging anemone.",
+    "swordtail": "Livebearer whose male trails a blade off his tail.",
+    // reptiles and amphibians
+    "frog": "Smooth-skinned jumper that began life as a tadpole.",
+    "toad": "Warty and dry-skinned; walks more than it hops.",
+    "newt": "Small water-loving amphibian with a paddle tail.",
+    "snake": "No legs, no eyelids, all spine.",
+    "gecko": "Sticky toes let it walk straight up glass.",
+    "skink": "Shiny, smooth-scaled, and drops its tail to escape.",
+    "anole": "Small green climber that flashes a pink throat fan.",
+    "turtle": "Shelled and far happier in the water.",
+    "lizard": "The general word for a scaly, four-legged basker.",
+    "iguana": "Big green climber with a spiny crest and a throat flap.",
+    "python": "A constrictor — it squeezes rather than bites.",
+    "axolotl": "Smiling Mexican amphibian that never grows up.",
+    "tortoise": "Shelled land plodder that may well outlive you.",
+    "chameleon": "Turret eyes, curled tail, colour that shifts with mood.",
+    "salamander": "Damp-skinned, long-tailed, and hiding under a log.",
+    // creepy-crawlies
+    "crab": "Walks sideways in armour, with pincers up.",
+    "snail": "Carries its house and leaves a silver trail.",
+    "tarantula": "Big and hairy, but calmer than it looks.",
+    // dog breeds
+    "pug": "Flat face, curly tail, snores like a chainsaw.",
+    "boxer": "Square-jawed, bouncy, and puppyish for life.",
+    "husky": "Blue-eyed sled dog that howls instead of barking.",
+    "corgi": "Short legs, huge ears, and a royal reputation.",
+    "collie": "Brainy herder with a long nose and a full coat.",
+    "beagle": "Small scent hound whose nose overrules its ears.",
+    "poodle": "Curly, clever, and far tougher than the haircut suggests.",
+    "bulldog": "Stocky and wrinkled, built low like a footstool.",
+    "terrier": "Small, scrappy, and bred to go down holes after vermin.",
+    "spaniel": "Silky ears and a feathered coat, born to flush birds.",
+    "mastiff": "Enormous, heavy-headed, and ancient as a guard.",
+    "pointer": "Freezes and aims its whole body at hidden game.",
+    "setter": "Feathered bird dog that crouches when it finds the scent.",
+    "sheepdog": "The shaggy sort that moves a whole flock alone.",
+    "whippet": "A sighthound in miniature: sprints, then sleeps all day.",
+    "greyhound": "The fastest dog alive, and a devoted couch potato.",
+    "dachshund": "Long body on short legs, bred to face badgers underground.",
+    "labrador": "Otter tail, waterproof coat, will eat literally anything.",
+    "retriever": "Bred to bring back whatever the hunter drops.",
+    "chihuahua": "The smallest breed, with the largest opinion.",
+    "dalmatian": "Spotted coach dog that once ran ahead of fire horses.",
+    "rottweiler": "Black-and-tan Roman drover, heavy and serious.",
+    "doberman": "Sleek, alert guard dog named after a tax collector.",
+    "schnauzer": "Wiry German breed with a beard and stern eyebrows.",
+    "pomeranian": "A pocket-sized ball of fluff descended from sled dogs.",
+    "samoyed": "White Siberian sled dog with a permanent smile.",
+    "akita": "Powerful Japanese guardian; Hachikō was one.",
+    "shiba": "Small, foxy Japanese breed with a famous scream.",
+    "malamute": "Heavy Alaskan freight hauler, bigger than a husky.",
+    "papillon": "Toy breed whose fringed ears look like butterfly wings.",
+    "havanese": "Silky little Cuban companion dog.",
+    "vizsla": "Rust-gold Hungarian pointer that velcros to your leg.",
+    "maltese": "Tiny white lapdog under a floor-length silk coat.",
+    "borzoi": "Russian wolf chaser: a sighthound in a fur coat.",
+    "saluki": "Ancient desert sighthound with feathered ears, built to run.",
+    "basenji": "African hunter that yodels instead of barking.",
+    "pekingese": "Flat-faced lion dog bred for Chinese emperors.",
+    "bernese": "Big tricolour Swiss mountain dog that used to pull carts.",
+    "shepherd": "Herding breed; the German one guards and polices.",
+    // cat breeds
+    "tabby": "Not a breed at all — stripes and an M on the forehead.",
+    "calico": "Three-colour patchwork coat, and almost always female.",
+    "siamese": "Cream body, dark points, blue eyes, never stops talking.",
+    "persian": "Flat face under a vast coat; a cushion with opinions.",
+    "bengal": "Spotted and wild-looking, descended from an Asian leopard cat.",
+    "ragdoll": "Big blue-eyed cat that goes limp when you lift it.",
+    "sphynx": "Hairless, wrinkled, and surprisingly warm to hold.",
+    "birman": "Sacred cat of Burma: dark points and four white paws.",
+    "burmese": "Compact and glossy brown, and behaves rather like a dog.",
+    "manx": "Famously tailless, from an island in the Irish Sea.",
+    "bombay": "Black from nose to toe with copper eyes; a small panther.",
+    "savannah": "Tall and long-legged, bred from a wild African serval.",
+    "ocicat": "Spotted like a wildcat but entirely domestic.",
+    "munchkin": "Short-legged — the dachshund of the cat world.",
+    "abyssinian": "Ticked ruddy coat, endless energy, one of the oldest breeds.",
+    "himalayan": "A long Persian coat wearing Siamese points.",
+    "siberian": "Big triple-coated Russian forest cat.",
+    "snowshoe": "Siamese points, plus four white boots.",
+    "tonkinese": "Siamese crossed with Burmese, with aqua eyes.",
+    "singapura": "The smallest breed, sepia-ticked, off the streets of a city-state.",
+    "korat": "Silver-blue Thai cat with a heart-shaped face; a luck charm.",
+    "balinese": "A Siamese grown long and silky, with a plume for a tail.",
+    // rabbit breeds
+    "lionhead": "Wears a woolly mane around its head.",
+    "angora": "Kept for wool, and needs regular haircuts.",
+    "flemish": "The giant of the rabbit world; can top six kilos.",
+    "harlequin": "Banded and split in orange and black, like a jester's suit.",
+    "rex": "Plush velvet coat with no guard hairs.",
+    "dwarf": "Tiny, with a round head and short ears."
+  };
 
   /* ---------------------------------------------------------------
      Guess list. A guess must be a real animal word — but any animal
@@ -598,6 +779,12 @@
   var LEN = ANSWER.length;
   var CATEGORY = CATEGORY_OF[ANSWER];
 
+  // Hints in the order the button hands them out: the written clue
+  // first, then the opening letter for anyone still stuck.
+  var HINTS = [];
+  if (CLUES[ANSWER]) HINTS.push(CLUES[ANSWER]);
+  HINTS.push("It starts with “" + ANSWER[0].toUpperCase() + "”.");
+
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);
   var todayUTC = Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
@@ -609,12 +796,13 @@
   var guesses = [];      // submitted guesses
   var current = "";      // in-progress guess
   var status = "playing"; // playing | won | lost
+  var hints = 0;         // how many hints have been asked for
   var busy = false;
 
   function save() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        date: DATE_KEY, guesses: guesses, status: status
+        date: DATE_KEY, guesses: guesses, status: status, hints: hints
       }));
     } catch (e) { /* private mode — just don't persist */ }
   }
@@ -629,6 +817,7 @@
       if (s.guesses.some(function (g) { return g.length !== LEN; })) return;
       guesses = s.guesses;
       status = s.status === "won" || s.status === "lost" ? s.status : "playing";
+      hints = Math.min(Math.max(parseInt(s.hints, 10) || 0, 0), HINTS.length);
     } catch (e) { /* ignore corrupt state */ }
   }
 
@@ -665,6 +854,8 @@
   var boardWrap = document.getElementById("board-wrap");
   var kbEl = document.getElementById("keyboard");
   var toastEl = document.getElementById("toast");
+  var clueEl = document.getElementById("clue");
+  var hintBtn = document.getElementById("hint-btn");
 
   document.getElementById("len-count").textContent = LEN;
   document.getElementById("category").textContent = CATEGORY;
@@ -760,6 +951,24 @@
     paintKeyboard();
   }
 
+  // Hints stay on screen once revealed, so the board has to be re-fitted
+  // around whatever room the clue line takes up.
+  function renderClue() {
+    var shown = HINTS.slice(0, hints);
+    clueEl.textContent = shown.join(" ");
+    clueEl.classList.toggle("show", shown.length > 0);
+    hintBtn.disabled = status !== "playing" || hints >= HINTS.length;
+    sizeBoard();
+  }
+
+  hintBtn.addEventListener("click", function () {
+    if (status !== "playing") { toast("Today's pet is already out of the bag!"); return; }
+    if (hints >= HINTS.length) { toast("That's every hint for today 🐾"); return; }
+    hints++;
+    save();
+    renderClue();
+  });
+
   var toastTimer;
   function toast(msg, ms) {
     toastEl.textContent = msg;
@@ -847,6 +1056,7 @@
       save();
 
       if (status !== "playing") {
+        renderClue();   // greys out the hint button now the pet is known
         setTimeout(showEnd, status === "won" ? 900 : 350);
       }
     }, total);
@@ -868,7 +1078,7 @@
   function shareText() {
     var head = "Petle #" + PUZZLE_NO + " " +
       (status === "won" ? guesses.length : "X") + "/" + MAX_GUESSES +
-      " (" + LEN + " letters)";
+      " (" + LEN + " letters)" + (hints ? " 💡" : "");
     return head + "\n\n" + shareGrid();
   }
 
@@ -953,6 +1163,7 @@
   buildKeyboard();
   sizeBoard();
   render();
+  renderClue();
 
   window.addEventListener("resize", sizeBoard);
   window.addEventListener("orientationchange", function () { setTimeout(sizeBoard, 150); });

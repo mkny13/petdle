@@ -53,7 +53,6 @@ favicon.
 
 Live at **https://mkny13.github.io/petdle/**.
 
-Settings → Pages → Source is set to **GitHub Actions**, and
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml) uploads the repo
-root on every push to `main`. There is no build step — the workflow just copies
-`index.html` up as-is.
+Settings → Pages → Source is **Deploy from a branch**, branch `main`, folder
+`/ (root)`. Every push to `main` republishes the site. No workflow and no build
+step — `index.html` at the repo root is the whole site.

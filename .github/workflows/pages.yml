@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
 # Publishes the repository root (index.html) to GitHub Pages.
-# `enablement: true` turns Pages on the first time this runs, so no manual
-# setup in repo settings is required.
+# GitHub Pages must be enabled in repo Settings > Pages (source: GitHub Actions).
 
 on:
   push:
@@ -30,8 +29,6 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

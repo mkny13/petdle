@@ -48,3 +48,11 @@ date.
 Any static host works: GitHub Pages, Netlify drop, an S3 bucket, or just
 `python3 -m http.server` on a laptop. The file is self-contained, including the
 favicon.
+
+### GitHub Pages
+
+Settings → Pages → Source: **Deploy from a branch**, branch **main**, folder
+**/ (root)** → Save. The site lands at https://mkny13.github.io/petdle/ a minute
+or so later, and every push to `main` republishes it.
+
+No workflow is needed — `index.html` at the repo root is the whole site.

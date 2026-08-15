@@ -51,8 +51,9 @@ favicon.
 
 ### GitHub Pages
 
-Settings → Pages → Source: **Deploy from a branch**, branch **main**, folder
-**/ (root)** → Save. The site lands at https://mkny13.github.io/petdle/ a minute
-or so later, and every push to `main` republishes it.
+Live at **https://mkny13.github.io/petdle/**.
 
-No workflow is needed — `index.html` at the repo root is the whole site.
+Settings → Pages → Source is set to **GitHub Actions**, and
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) uploads the repo
+root on every push to `main`. There is no build step — the workflow just copies
+`index.html` up as-is.

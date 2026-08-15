@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="description" content="Petle — a daily word game about pets and pet breeds. New word every day, 12 guesses.">
+<meta name="theme-color" content="#6b4ee6">
+<title>Petle — the daily pet word game</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>">
+<style>
+  :root {
+    --bg: #f7f5ff;
+    --panel: #ffffff;
+    --text: #21203a;
+    --muted: #6f6b8a;
+    --line: #d9d5ec;
+    --key: #e6e2f5;
+    --key-text: #21203a;
+    --green: #4caf72;
+    --yellow: #e0b03c;
+    --gray: #8e8aa6;
+    --accent: #6b4ee6;
+    --tile-gap: 4px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16152a;
+      --panel: #1e1d36;
+      --text: #f2f1fa;
+      --muted: #a09bc0;
+      --line: #35335a;
+      --key: #35335a;
+      --key-text: #f2f1fa;
+      --green: #4caf72;
+      --yellow: #d3a437;
+      --gray: #4a4869;
+      --accent: #9a83ff;
+    }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  header {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h1 {
+    font-size: 24px;
+    letter-spacing: 3px;
+    margin: 0;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  h1 .paw { letter-spacing: 0; }
+
+  .sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .5px;
+  }
+
+  .icon-btn {
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .icon-btn:active { transform: scale(.94); }
+
+  main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 6px;
+    gap: 6px;
+  }
+
+  #length-note {
+    flex: none;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  #length-note b { color: var(--accent); }
+
+  #board-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #board {
+    display: grid;
+    gap: var(--tile-gap);
+    justify-content: center;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--tile));
+    gap: var(--tile-gap);
+  }
+
+  .tile {
+    width: var(--tile);
+    height: var(--tile);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: calc(var(--tile) * 0.52);
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--text);
+    user-select: none;
+  }
+
+  .tile.filled {
+    border-color: var(--muted);
+    animation: pop 110ms ease-out;
+  }
+
+  @keyframes pop {
+    0% { transform: scale(.9); }
+    100% { transform: scale(1); }
+  }
+
+  .tile.reveal { animation: flip 480ms ease forwards; }
+
+  @keyframes flip {
+    0%   { transform: rotateX(0deg); }
+    45%  { transform: rotateX(90deg); }
+    55%  { transform: rotateX(90deg); }
+    100% { transform: rotateX(0deg); }
+  }
+
+  .tile.correct, .tile.present, .tile.absent { color: #fff; border-color: transparent; }
+  .tile.correct { background: var(--green); }
+  .tile.present { background: var(--yellow); }
+  .tile.absent  { background: var(--gray); }
+
+  .row.shake { animation: shake 380ms ease; }
+
+  @keyframes shake {
+    10%, 90% { transform: translateX(-2px); }
+    20%, 80% { transform: translateX(4px); }
+    30%, 50%, 70% { transform: translateX(-6px); }
+    40%, 60% { transform: translateX(6px); }
+  }
+
+  .row.win .tile { animation: bounce 600ms ease; }
+
+  @keyframes bounce {
+    0%, 20% { transform: translateY(0); }
+    40% { transform: translateY(-24px); }
+    50% { transform: translateY(4px); }
+    60% { transform: translateY(-10px); }
+    80%, 100% { transform: translateY(0); }
+  }
+
+  #keyboard {
+    flex: none;
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 4px 4px calc(6px + var(--safe-b));
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .krow {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+  }
+
+  .key {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 52px;
+    border: none;
+    border-radius: 6px;
+    background: var(--key);
+    color: var(--key-text);
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+  }
+
+  .key.wide { flex: 1.6 1 auto; font-size: 11px; letter-spacing: .5px; }
+  .key:active { transform: scale(.94); }
+  /* Tapping a key shouldn't leave a lingering focus ring on touch devices. */
+  .key:focus:not(:focus-visible), .icon-btn:focus:not(:focus-visible) { outline: none; }
+  .key.correct { background: var(--green); color: #fff; }
+  .key.present { background: var(--yellow); color: #fff; }
+  .key.absent  { background: var(--gray); color: #fff; opacity: .75; }
+
+  #toast {
+    position: fixed;
+    top: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms;
+    z-index: 30;
+    max-width: 90vw;
+    text-align: center;
+  }
+
+  #toast.show { opacity: 1; }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 9, 25, .55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    z-index: 40;
+  }
+
+  .overlay.show { display: flex; }
+
+  .card {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 380px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 18px 50px rgba(0,0,0,.3);
+  }
+
+  .card h2 { margin: 0 0 10px; font-size: 20px; }
+  .card p { margin: 8px 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+  .card p strong { color: var(--text); }
+
+  .example {
+    display: flex;
+    gap: 4px;
+    margin: 6px 0;
+  }
+
+  .example .tile {
+    --tile: 32px;
+    font-size: 16px;
+    border-width: 2px;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--line);
+  }
+
+  .answer-word {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  #share-grid {
+    font-size: 15px;
+    line-height: 1.15;
+    text-align: center;
+    margin: 12px 0;
+    white-space: pre;
+    font-family: system-ui, sans-serif;
+  }
+
+  @media (max-height: 640px) {
+    .key { height: 44px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="icon-btn" id="help-btn" aria-label="How to play">?</button>
+  <div style="text-align:center">
+    <h1><span class="paw">🐾</span> Petle</h1>
+    <div class="sub" id="puzzle-no">Daily pet word</div>
+  </div>
+  <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
+</header>
+
+<main>
+  <div id="length-note">Today's pet has <b id="len-count">5</b> letters</div>
+  <div id="board-wrap"><div id="board"></div></div>
+</main>
+
+<div id="keyboard"></div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div class="overlay" id="help-overlay">
+  <div class="card">
+    <h2>How to play Petle 🐾</h2>
+    <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
+    <p>Every guess must be the right number of letters. The tiles change color to show how close you are.</p>
+    <div class="example">
+      <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
+    </div>
+    <p><strong>P</strong> is in the word and in the right spot.</p>
+    <div class="example">
+      <div class="tile">c</div><div class="tile present">a</div><div class="tile">t</div>
+    </div>
+    <p><strong>A</strong> is in the word but in the wrong spot.</p>
+    <div class="example">
+      <div class="tile">r</div><div class="tile">a</div><div class="tile absent">t</div>
+    </div>
+    <p><strong>T</strong> is not in the word anywhere.</p>
+    <p>Everyone in the world gets the same pet each day. A new one appears at midnight!</p>
+    <button class="btn" data-close>Let's play</button>
+  </div>
+</div>
+
+<div class="overlay" id="end-overlay">
+  <div class="card">
+    <h2 id="end-title">Nice!</h2>
+    <p id="end-msg"></p>
+    <div id="share-grid"></div>
+    <button class="btn" id="share-btn">Share result</button>
+    <button class="btn secondary" data-close>Keep looking at the board</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     Word list: pet types and specific breeds, 3-12 letters, a-z only.
+     Order does not matter — it is sorted below so the daily pick is
+     stable no matter how the list is edited above.
+  ----------------------------------------------------------------*/
+  var WORDS = [
+    // general pets
+    "cat", "dog", "rat", "pig", "hen", "koi", "fish", "bird", "frog", "toad",
+    "newt", "duck", "goat", "pony", "crab", "mouse", "horse", "snake", "snail",
+    "gecko", "puppy", "kitten", "bunny", "rabbit", "ferret", "gerbil", "parrot",
+    "turtle", "lizard", "iguana", "donkey", "alpaca", "llama", "python",
+    "hamster", "chicken", "hedgehog", "tortoise", "goldfish", "chinchilla",
+    "tarantula", "salamander", "chameleon", "axolotl", "guppy", "betta",
+    "angelfish", "clownfish", "catfish", "swordtail", "tetra", "molly", "platy",
+    "danio", "oscar", "canary", "finch", "budgie", "macaw", "cockatoo",
+    "cockatiel", "parakeet", "lovebird", "conure", "lorikeet", "pigeon", "skink",
+    "anole", "degu",
+    // dog breeds
+    "pug", "boxer", "husky", "corgi", "collie", "beagle", "poodle", "bulldog",
+    "terrier", "spaniel", "mastiff", "pointer", "setter", "sheepdog", "whippet",
+    "greyhound", "dachshund", "labrador", "retriever", "chihuahua", "dalmatian",
+    "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
+    "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
+    "saluki", "basenji", "pekingese", "bernese", "shepherd",
+    // cat breeds
+    "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
+    "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
+    "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
+    "korat", "balinese",
+    // rabbit / small pet breeds
+    "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
+  ];
+
+  // De-duplicate + sort so the index for a given day never drifts.
+  WORDS = WORDS.filter(function (w, i) { return WORDS.indexOf(w) === i; }).sort();
+
+  var MAX_GUESSES = 12;
+
+  /* ------------------------- daily word ------------------------- */
+
+  function localDateKey(d) {
+    d = d || new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  // FNV-1a style hash of the date string -> stable index into WORDS.
+  function hashString(str) {
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  var DATE_KEY = localDateKey();
+  var ANSWER = WORDS[hashString("petle-" + DATE_KEY) % WORDS.length];
+  var LEN = ANSWER.length;
+
+  // Puzzle number, counted from the launch date, just for flavour.
+  var EPOCH = Date.UTC(2024, 0, 1);
+  var todayUTC = Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  var PUZZLE_NO = Math.round((todayUTC - EPOCH) / 86400000);
+
+  /* --------------------------- state ---------------------------- */
+
+  var STORE_KEY = "petle-state";
+  var guesses = [];      // submitted guesses
+  var current = "";      // in-progress guess
+  var status = "playing"; // playing | won | lost
+  var busy = false;
+
+  function save() {
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        date: DATE_KEY, guesses: guesses, status: status
+      }));
+    } catch (e) { /* private mode — just don't persist */ }
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s || s.date !== DATE_KEY || !Array.isArray(s.guesses)) return;
+      // Guard against a word-list edit changing today's answer length.
+      if (s.guesses.some(function (g) { return g.length !== LEN; })) return;
+      guesses = s.guesses;
+      status = s.status === "won" || s.status === "lost" ? s.status : "playing";
+    } catch (e) { /* ignore corrupt state */ }
+  }
+
+  /* --------------------------- scoring -------------------------- */
+
+  // Standard Wordle two-pass scoring, so duplicate letters behave.
+  function score(guess) {
+    var res = new Array(LEN).fill("absent");
+    var pool = {};
+    var i, ch;
+
+    for (i = 0; i < LEN; i++) {
+      if (guess[i] === ANSWER[i]) {
+        res[i] = "correct";
+      } else {
+        ch = ANSWER[i];
+        pool[ch] = (pool[ch] || 0) + 1;
+      }
+    }
+    for (i = 0; i < LEN; i++) {
+      if (res[i] === "correct") continue;
+      ch = guess[i];
+      if (pool[ch] > 0) {
+        res[i] = "present";
+        pool[ch]--;
+      }
+    }
+    return res;
+  }
+
+  /* ----------------------------- DOM ---------------------------- */
+
+  var boardEl = document.getElementById("board");
+  var boardWrap = document.getElementById("board-wrap");
+  var kbEl = document.getElementById("keyboard");
+  var toastEl = document.getElementById("toast");
+
+  document.getElementById("len-count").textContent = LEN;
+  document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
+
+  function buildBoard() {
+    boardEl.innerHTML = "";
+    boardEl.style.setProperty("--cols", LEN);
+    for (var r = 0; r < MAX_GUESSES; r++) {
+      var row = document.createElement("div");
+      row.className = "row";
+      row.dataset.row = r;
+      for (var c = 0; c < LEN; c++) {
+        var t = document.createElement("div");
+        t.className = "tile";
+        row.appendChild(t);
+      }
+      boardEl.appendChild(row);
+    }
+  }
+
+  // Fit the grid to whatever space is left between header and keyboard.
+  function sizeBoard() {
+    var gap = 4;
+    var availW = boardWrap.clientWidth - 8;
+    var availH = boardWrap.clientHeight - 4;
+    var byW = (availW - gap * (LEN - 1)) / LEN;
+    var byH = (availH - gap * (MAX_GUESSES - 1)) / MAX_GUESSES;
+    var size = Math.floor(Math.min(byW, byH, 58));
+    if (size < 16) size = 16;
+    boardEl.style.setProperty("--tile", size + "px");
+  }
+
+  var KEY_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  var keyEls = {};
+
+  function buildKeyboard() {
+    kbEl.innerHTML = "";
+    KEY_ROWS.forEach(function (letters, idx) {
+      var row = document.createElement("div");
+      row.className = "krow";
+      if (idx === 2) row.appendChild(makeKey("ENTER", "enter", true));
+      letters.split("").forEach(function (ch) {
+        var k = makeKey(ch, ch, false);
+        keyEls[ch] = k;
+        row.appendChild(k);
+      });
+      if (idx === 2) row.appendChild(makeKey("⌫", "back", true));
+      kbEl.appendChild(row);
+    });
+  }
+
+  function makeKey(label, value, wide) {
+    var b = document.createElement("button");
+    b.className = "key" + (wide ? " wide" : "");
+    b.textContent = label;
+    b.dataset.key = value;
+    b.setAttribute("aria-label", value === "back" ? "Delete" : label);
+    return b;
+  }
+
+  var RANK = { absent: 0, present: 1, correct: 2 };
+
+  function paintKeyboard() {
+    var best = {};
+    guesses.forEach(function (g) {
+      var res = score(g);
+      for (var i = 0; i < LEN; i++) {
+        var ch = g[i];
+        if (!(ch in best) || RANK[res[i]] > RANK[best[ch]]) best[ch] = res[i];
+      }
+    });
+    Object.keys(keyEls).forEach(function (ch) {
+      keyEls[ch].className = "key" + (best[ch] ? " " + best[ch] : "");
+    });
+  }
+
+  function rowEl(i) { return boardEl.children[i]; }
+
+  // Full redraw (used on load and after deletes).
+  function render() {
+    for (var r = 0; r < MAX_GUESSES; r++) {
+      var row = rowEl(r);
+      var word = r < guesses.length ? guesses[r] : (r === guesses.length ? current : "");
+      var res = r < guesses.length ? score(word) : null;
+      for (var c = 0; c < LEN; c++) {
+        var t = row.children[c];
+        var ch = word[c] || "";
+        t.textContent = ch;
+        t.className = "tile" + (ch && !res ? " filled" : "") + (res ? " " + res[c] : "");
+      }
+    }
+    paintKeyboard();
+  }
+
+  var toastTimer;
+  function toast(msg, ms) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toastEl.classList.remove("show");
+    }, ms || 1600);
+  }
+
+  /* --------------------------- gameplay ------------------------- */
+
+  function onKey(k) {
+    if (busy || status !== "playing") return;
+    if (k === "enter") return submit();
+    if (k === "back") {
+      if (current.length) {
+        current = current.slice(0, -1);
+        var t = rowEl(guesses.length).children[current.length];
+        t.textContent = "";
+        t.className = "tile";
+      }
+      return;
+    }
+    if (/^[a-z]$/.test(k) && current.length < LEN) {
+      var tile = rowEl(guesses.length).children[current.length];
+      current += k;
+      tile.textContent = k;
+      tile.className = "tile filled";
+    }
+  }
+
+  function submit() {
+    if (current.length < LEN) {
+      var row = rowEl(guesses.length);
+      row.classList.add("shake");
+      setTimeout(function () { row.classList.remove("shake"); }, 400);
+      toast(current.length === 0 ? "Type a guess first" : "Needs " + LEN + " letters");
+      return;
+    }
+
+    var guess = current;
+    var rowIndex = guesses.length;
+    guesses.push(guess);
+    current = "";
+    busy = true;
+
+    var res = score(guess);
+    var row = rowEl(rowIndex);
+
+    for (var i = 0; i < LEN; i++) {
+      (function (i) {
+        setTimeout(function () {
+          var t = row.children[i];
+          t.classList.add("reveal");
+          setTimeout(function () {
+            t.className = "tile reveal " + res[i];
+          }, 240);
+        }, i * 220);
+      })(i);
+    }
+
+    var total = (LEN - 1) * 220 + 480;
+
+    setTimeout(function () {
+      busy = false;
+      paintKeyboard();
+
+      if (guess === ANSWER) {
+        status = "won";
+        row.classList.add("win");
+      } else if (guesses.length >= MAX_GUESSES) {
+        status = "lost";
+      }
+      save();
+
+      if (status !== "playing") {
+        setTimeout(showEnd, status === "won" ? 900 : 350);
+      }
+    }, total);
+
+    save();
+  }
+
+  /* ------------------------- end screen ------------------------- */
+
+  var PRAISE = ["Genius! 🐾", "Amazing!", "Impressive!", "Great job!", "Nice one!", "Phew — got it!"];
+
+  function shareGrid() {
+    var emoji = { correct: "🟩", present: "🟨", absent: "⬜" };
+    return guesses.map(function (g) {
+      return score(g).map(function (s) { return emoji[s]; }).join("");
+    }).join("\n");
+  }
+
+  function shareText() {
+    var head = "Petle #" + PUZZLE_NO + " " +
+      (status === "won" ? guesses.length : "X") + "/" + MAX_GUESSES +
+      " (" + LEN + " letters)";
+    return head + "\n\n" + shareGrid();
+  }
+
+  function showEnd() {
+    var title = document.getElementById("end-title");
+    var msg = document.getElementById("end-msg");
+
+    if (status === "won") {
+      var idx = Math.min(guesses.length - 1, PRAISE.length - 1);
+      title.textContent = PRAISE[idx];
+      msg.innerHTML = "You found <span class=\"answer-word\">" + ANSWER + "</span> in " +
+        guesses.length + (guesses.length === 1 ? " guess." : " guesses.");
+    } else {
+      title.textContent = "Out of guesses 🐾";
+      msg.innerHTML = "Today's pet was <span class=\"answer-word\">" + ANSWER + "</span>. Come back tomorrow for a new one!";
+    }
+    document.getElementById("share-grid").textContent = shareGrid();
+    open(document.getElementById("end-overlay"));
+  }
+
+  document.getElementById("share-btn").addEventListener("click", function () {
+    var text = shareText();
+    if (navigator.share) {
+      navigator.share({ text: text }).catch(function () {});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast("Copied to clipboard!");
+      }, function () { toast("Couldn't copy — screenshot it!"); });
+    } else {
+      toast("Couldn't copy — screenshot it!");
+    }
+  });
+
+  /* --------------------------- overlays ------------------------- */
+
+  function open(el) { el.classList.add("show"); }
+  function close(el) { el.classList.remove("show"); }
+
+  document.getElementById("help-btn").addEventListener("click", function () {
+    open(document.getElementById("help-overlay"));
+  });
+
+  document.getElementById("stats-btn").addEventListener("click", function () {
+    if (status === "playing") {
+      toast("Finish today's pet first! " + (MAX_GUESSES - guesses.length) + " guesses left");
+    } else {
+      showEnd();
+    }
+  });
+
+  document.querySelectorAll("[data-close]").forEach(function (b) {
+    b.addEventListener("click", function () { close(b.closest(".overlay")); });
+  });
+
+  document.querySelectorAll(".overlay").forEach(function (o) {
+    o.addEventListener("click", function (e) { if (e.target === o) close(o); });
+  });
+
+  /* --------------------------- input ---------------------------- */
+
+  kbEl.addEventListener("click", function (e) {
+    var btn = e.target.closest(".key");
+    if (btn) onKey(btn.dataset.key);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var openOverlay = document.querySelector(".overlay.show");
+    if (e.key === "Escape" && openOverlay) { close(openOverlay); return; }
+    if (openOverlay) return;
+    if (e.key === "Enter") { e.preventDefault(); onKey("enter"); }
+    else if (e.key === "Backspace") { e.preventDefault(); onKey("back"); }
+    else if (/^[a-zA-Z]$/.test(e.key)) onKey(e.key.toLowerCase());
+  });
+
+  /* ---------------------------- boot ---------------------------- */
+
+  load();
+  buildBoard();
+  buildKeyboard();
+  sizeBoard();
+  render();
+
+  window.addEventListener("resize", sizeBoard);
+  window.addEventListener("orientationchange", function () { setTimeout(sizeBoard, 150); });
+
+  // First-time visitors get the rules automatically.
+  try {
+    if (!localStorage.getItem("petle-seen-help")) {
+      open(document.getElementById("help-overlay"));
+      localStorage.setItem("petle-seen-help", "1");
+    }
+  } catch (e) { /* ignore */ }
+
+  if (status !== "playing") setTimeout(showEnd, 400);
+
+  // If the tab is left open past midnight, pick up the new pet on return.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && localDateKey() !== DATE_KEY) location.reload();
+  });
+})();
+</script>
+</body>
+</html>

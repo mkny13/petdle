@@ -354,7 +354,7 @@
 </header>
 
 <main>
-  <div id="length-note">Today's pet has <b id="len-count">5</b> letters</div>
+  <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters</div>
   <div id="board-wrap"><div id="board"></div></div>
 </main>
 
@@ -366,7 +366,8 @@
   <div class="card">
     <h2>How to play Petle 🐾</h2>
     <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
-    <p>Every guess must be the right number of letters. The tiles change color to show how close you are.</p>
+    <p>The line above the board is your hint: it names the <strong>category</strong> and the <strong>length</strong>, so a 9-letter dog breed is a much smaller haystack than "some pet".</p>
+    <p>Guesses only have to be the right number of letters — any letters are allowed, so a made-up row is a fine way to test letters. The tiles change color to show how close you are.</p>
     <div class="example">
       <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
     </div>
@@ -399,40 +400,74 @@
   "use strict";
 
   /* ---------------------------------------------------------------
-     Word list: pet types and specific breeds, 3-12 letters, a-z only.
-     Order does not matter — it is sorted below so the daily pick is
-     stable no matter how the list is edited above.
+     Word list: pet types and specific breeds, 3-12 letters, a-z only,
+     grouped by the category shown as a hint above the board. Without
+     the hint, longer answers are close to unguessable.
+
+     A word belongs to exactly one category — if it appears twice, the
+     first group wins. Group order does not matter: the flattened list
+     is sorted below so the daily pick is stable no matter how the
+     groups are edited above.
   ----------------------------------------------------------------*/
-  var WORDS = [
-    // general pets
-    "cat", "dog", "rat", "pig", "hen", "koi", "fish", "bird", "frog", "toad",
-    "newt", "duck", "goat", "pony", "crab", "mouse", "horse", "snake", "snail",
-    "gecko", "puppy", "kitten", "bunny", "rabbit", "ferret", "gerbil", "parrot",
-    "turtle", "lizard", "iguana", "donkey", "alpaca", "llama", "python",
-    "hamster", "chicken", "hedgehog", "tortoise", "goldfish", "chinchilla",
-    "tarantula", "salamander", "chameleon", "axolotl", "guppy", "betta",
-    "angelfish", "clownfish", "catfish", "swordtail", "tetra", "molly", "platy",
-    "danio", "oscar", "canary", "finch", "budgie", "macaw", "cockatoo",
-    "cockatiel", "parakeet", "lovebird", "conure", "lorikeet", "pigeon", "skink",
-    "anole", "degu",
-    // dog breeds
-    "pug", "boxer", "husky", "corgi", "collie", "beagle", "poodle", "bulldog",
-    "terrier", "spaniel", "mastiff", "pointer", "setter", "sheepdog", "whippet",
-    "greyhound", "dachshund", "labrador", "retriever", "chihuahua", "dalmatian",
-    "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
-    "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
-    "saluki", "basenji", "pekingese", "bernese", "shepherd",
-    // cat breeds
-    "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
-    "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
-    "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
-    "korat", "balinese",
-    // rabbit / small pet breeds
-    "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
+  var GROUPS = [
+    ["Kind of pet", [
+      "cat", "dog", "fish", "bird", "puppy", "kitten", "bunny"
+    ]],
+    ["Small furry pet", [
+      "rat", "mouse", "hamster", "gerbil", "ferret", "rabbit", "hedgehog",
+      "chinchilla", "degu"
+    ]],
+    ["Farm or backyard pet", [
+      "pig", "hen", "duck", "goat", "pony", "horse", "donkey", "llama",
+      "alpaca", "chicken"
+    ]],
+    ["Pet bird", [
+      "parrot", "canary", "finch", "budgie", "macaw", "pigeon", "conure",
+      "lovebird", "lorikeet", "parakeet", "cockatoo", "cockatiel"
+    ]],
+    ["Fish or aquarium pet", [
+      "koi", "betta", "guppy", "tetra", "molly", "platy", "danio", "oscar",
+      "catfish", "goldfish", "angelfish", "clownfish", "swordtail"
+    ]],
+    ["Reptile or amphibian", [
+      "frog", "toad", "newt", "snake", "gecko", "skink", "anole", "turtle",
+      "lizard", "iguana", "python", "axolotl", "tortoise", "chameleon",
+      "salamander"
+    ]],
+    ["Creepy-crawly pet", [
+      "crab", "snail", "tarantula"
+    ]],
+    ["Dog breed", [
+      "pug", "boxer", "husky", "corgi", "collie", "beagle", "poodle", "bulldog",
+      "terrier", "spaniel", "mastiff", "pointer", "setter", "sheepdog", "whippet",
+      "greyhound", "dachshund", "labrador", "retriever", "chihuahua", "dalmatian",
+      "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
+      "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
+      "saluki", "basenji", "pekingese", "bernese", "shepherd"
+    ]],
+    ["Cat breed", [
+      "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
+      "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
+      "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
+      "korat", "balinese"
+    ]],
+    ["Rabbit breed", [
+      "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
+    ]]
   ];
 
-  // De-duplicate + sort so the index for a given day never drifts.
-  WORDS = WORDS.filter(function (w, i) { return WORDS.indexOf(w) === i; }).sort();
+  // Flatten to a de-duplicated, sorted list so the index for a given day
+  // never drifts, keeping each word's category alongside it.
+  var CATEGORY_OF = {};
+  var WORDS = [];
+  GROUPS.forEach(function (group) {
+    group[1].forEach(function (w) {
+      if (CATEGORY_OF.hasOwnProperty(w)) return;
+      CATEGORY_OF[w] = group[0];
+      WORDS.push(w);
+    });
+  });
+  WORDS.sort();
 
   var MAX_GUESSES = 12;
 
@@ -458,6 +493,7 @@
   var DATE_KEY = localDateKey();
   var ANSWER = WORDS[hashString("petle-" + DATE_KEY) % WORDS.length];
   var LEN = ANSWER.length;
+  var CATEGORY = CATEGORY_OF[ANSWER];
 
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);
@@ -528,6 +564,7 @@
   var toastEl = document.getElementById("toast");
 
   document.getElementById("len-count").textContent = LEN;
+  document.getElementById("category").textContent = CATEGORY;
   document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
 
   function buildBoard() {

@@ -24,10 +24,11 @@ dependencies — open the file or drop it on any static host.
   really has two.
 - **On-screen keyboard** that colors in as you learn letters, plus physical
   keyboard support.
-- Guesses only have to be the right *length* — **any** combination of `a`–`z` is
-  accepted. There is no dictionary check and no pet-word check: `qqqqqqqq` is a
-  legal guess. With a ~136-word list, requiring real pet words for every guess
-  would be brutal for kids, and a throwaway row is a useful way to test letters.
+- **Guesses must be real animal words** of the right length — but *any* animal
+  counts, not just pets, so `elephant` is a fine way to probe letters while
+  hunting an 8-letter cat breed. A rejected guess shakes the row and costs
+  nothing. Restricting guesses to *pets* would be brutal (136 words); opening it
+  to any animal keeps 38–109 legal guesses at every length the game uses.
 - Progress is saved in `localStorage`, so closing the tab mid-game is safe.
   Finish and you get a shareable emoji grid.
 
@@ -54,6 +55,23 @@ The groups are flattened, de-duplicated and sorted at load, so the daily mapping
 stays stable regardless of which group you paste a new word into — though adding
 or removing any word does reshuffle which pet lands on which date. Re-grouping
 existing words is free: it changes hints, never the schedule.
+
+## Editing the guess list
+
+`OTHER_ANIMALS`, just below `GROUPS`, holds the animals that are *not* possible
+answers — wild mammals, birds, fish, reptiles, bugs, and breeds beyond the answer
+list. Legal guesses are `GROUPS` + `OTHER_ANIMALS`, so every answer is always
+guessable and this list only ever widens what's accepted. Adding to it never
+changes which pet lands on which date.
+
+Breeds are deliberately included: the hint often reads *Dog breed*, so players
+type dog breeds, and rejecting a real one reads as a bug. If playtesters hit
+"Not an animal we know" on a legitimate word, that's the list needing a new
+entry, not the player being wrong.
+
+Words run 3–10 letters, matching the answers. An 11-letter word would be dead
+weight — the board is always exactly as wide as the day's pet, so a guess can
+only ever be the answer's length.
 
 ## Hosting
 

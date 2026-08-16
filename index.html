@@ -391,7 +391,7 @@
     <h2>How to play Petle 🐾</h2>
     <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
     <p>The line above the board is your hint: it names the <strong>category</strong> and the <strong>length</strong>, so a 9-letter dog breed is a much smaller haystack than "some pet".</p>
-    <p>Stuck? Tap <strong>💡</strong> for a clue about today's pet. Tap it again and it reveals a letter from the middle. Hints don't cost you a guess — they just show up on your shared result.</p>
+    <p>Stuck? Tap <strong>💡</strong> for a clue about today's pet. Tap it again and it reveals a letter from the middle, then a third tap reveals the letter right next to it. Hints don't cost you a guess — they just show up on your shared result.</p>
     <p>Every guess has to be a real <strong>animal</strong> of the right length — but any animal counts, not just pets. Hunting an 8-letter dog breed? <strong>elephant</strong> is a perfectly good way to test letters. The tiles change color to show how close you are.</p>
     <div class="example">
       <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
@@ -761,17 +761,21 @@
   }
 
   // Hints in the order the button hands them out: the written clue
-  // first, then a letter for anyone still stuck.
+  // first, then two letters for anyone still stuck.
   //
-  // That letter comes from the middle, not the start. On a three-letter
+  // Those letters come from the middle, not the start. On a three-letter
   // pet the opening letter is a third of the answer, and the first
   // letter is also the one guessing already tends to pin down — a
-  // middle letter narrows more and gives away less.
+  // middle letter narrows more and gives away less. The second letter
+  // sits right next to the first, so the two form a contiguous window
+  // into the word instead of two scattered reveals.
   var MID = Math.floor(LEN / 2);
+  var MID2 = MID - 1;
 
   var HINTS = [];
   if (CLUES[ANSWER]) HINTS.push(CLUES[ANSWER]);
   HINTS.push("Its " + ordinal(MID + 1) + " letter is “" + ANSWER[MID].toUpperCase() + "”.");
+  HINTS.push("Its " + ordinal(MID2 + 1) + " letter is “" + ANSWER[MID2].toUpperCase() + "”.");
 
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);

@@ -18,12 +18,12 @@ dependencies — open the file or drop it on any static host.
   *Rabbit breed*, *Pet bird*, *Fish or aquarium pet*, *Reptile or
   amphibian*, *Small furry pet*, *Farm or backyard pet*, *Creepy-crawly pet*, or
   *Kind of pet* for the general ones like `puppy`.
-- **A 💡 hint button**, twice per puzzle: first a written clue about the day's
-  pet (`CLUES` holds one for every answer, and never names the animal or repeats
-  the category), then a single letter from the *middle* of the word. Middle
-  rather than first: on a three-letter pet the opening letter is a third of the
-  answer, and it's the letter guessing tends to pin down anyway. Hints cost no
-  guess; they mark the shared result with a 💡.
+- **A 💡 hint button**, three times per puzzle: first a written clue about the
+  day's pet (`CLUES` holds one for every answer, and never names the animal or
+  repeats the category), then two adjacent letters from the *middle* of the
+  word. Middle rather than first: on a three-letter pet the opening letter is
+  a third of the answer, and it's the letter guessing tends to pin down
+  anyway. Hints cost no guess; they mark the shared result with a 💡.
 - **Standard feedback colors**: green = right letter, right spot; yellow =
   right letter, wrong spot; gray = not in the word. Duplicate letters use
   Wordle's two-pass rule, so a second `n` only turns yellow if the answer

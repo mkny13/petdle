@@ -391,8 +391,8 @@
     <h2>How to play Petle 🐾</h2>
     <p>Guess the hidden <strong>pet</strong> in 12 tries. It might be a kind of animal (<strong>hamster</strong>) or a specific breed (<strong>poodle</strong>).</p>
     <p>The line above the board is your hint: it names the <strong>category</strong> and the <strong>length</strong>, so a 9-letter dog breed is a much smaller haystack than "some pet".</p>
-    <p>Stuck? Tap <strong>💡</strong> for a clue about today's pet. Tap it again and it reveals a letter from the middle. Hints don't cost you a guess — they just show up on your shared result.</p>
-    <p>Every guess has to be a real <strong>animal</strong> of the right length — but any animal counts, not just pets. Hunting an 8-letter cat breed? <strong>elephant</strong> is a perfectly good way to test letters. The tiles change color to show how close you are.</p>
+    <p>Stuck? Tap <strong>💡</strong> for a clue about today's pet. Tap it again and it reveals a letter from the middle, then a third tap reveals the letter right next to it. Hints don't cost you a guess — they just show up on your shared result.</p>
+    <p>Every guess has to be a real <strong>animal</strong> of the right length — but any animal counts, not just pets. Hunting an 8-letter dog breed? <strong>elephant</strong> is a perfectly good way to test letters. The tiles change color to show how close you are.</p>
     <div class="example">
       <div class="tile correct">p</div><div class="tile">u</div><div class="tile">g</div>
     </div>
@@ -469,12 +469,6 @@
       "rottweiler", "doberman", "schnauzer", "pomeranian", "samoyed", "akita",
       "shiba", "malamute", "papillon", "havanese", "vizsla", "maltese", "borzoi",
       "saluki", "basenji", "pekingese", "bernese", "shepherd"
-    ]],
-    ["Cat breed", [
-      "tabby", "calico", "siamese", "persian", "bengal", "ragdoll", "sphynx",
-      "birman", "burmese", "manx", "bombay", "savannah", "ocicat", "munchkin",
-      "abyssinian", "himalayan", "siberian", "snowshoe", "tonkinese", "singapura",
-      "korat", "balinese"
     ]],
     ["Rabbit breed", [
       "lionhead", "angora", "flemish", "harlequin", "rex", "dwarf"
@@ -618,29 +612,6 @@
     "pekingese": "Flat-faced lion dog bred for Chinese emperors.",
     "bernese": "Big tricolour Swiss mountain dog that used to pull carts.",
     "shepherd": "Herding breed; the German one guards and polices.",
-    // cat breeds
-    "tabby": "Not a breed at all — stripes and an M on the forehead.",
-    "calico": "Three-colour patchwork coat, and almost always female.",
-    "siamese": "Cream body, dark points, blue eyes, never stops talking.",
-    "persian": "Flat face under a vast coat; a cushion with opinions.",
-    "bengal": "Spotted and wild-looking, descended from an Asian leopard cat.",
-    "ragdoll": "Big blue-eyed cat that goes limp when you lift it.",
-    "sphynx": "Hairless, wrinkled, and surprisingly warm to hold.",
-    "birman": "Sacred cat of Burma: dark points and four white paws.",
-    "burmese": "Compact and glossy brown, and behaves rather like a dog.",
-    "manx": "Famously tailless, from an island in the Irish Sea.",
-    "bombay": "Black from nose to toe with copper eyes; a small panther.",
-    "savannah": "Tall and long-legged, bred from a wild African serval.",
-    "ocicat": "Spotted like a wildcat but entirely domestic.",
-    "munchkin": "Short-legged — the dachshund of the cat world.",
-    "abyssinian": "Ticked ruddy coat, endless energy, one of the oldest breeds.",
-    "himalayan": "A long Persian coat wearing Siamese points.",
-    "siberian": "Big triple-coated Russian forest cat.",
-    "snowshoe": "Siamese points, plus four white boots.",
-    "tonkinese": "Siamese crossed with Burmese, with aqua eyes.",
-    "singapura": "The smallest breed, sepia-ticked, off the streets of a city-state.",
-    "korat": "Silver-blue Thai cat with a heart-shaped face; a luck charm.",
-    "balinese": "A Siamese grown long and silky, with a plume for a tail.",
     // rabbit breeds
     "lionhead": "Wears a woolly mane around its head.",
     "angora": "Kept for wool, and needs regular haircuts.",
@@ -653,7 +624,7 @@
   /* ---------------------------------------------------------------
      Guess list. A guess must be a real animal word — but any animal
      counts, not just pets, so you can freely probe letters with
-     "elephant" while hunting an 8-letter cat breed.
+     "elephant" while hunting an 8-letter dog breed.
 
      These are the animals that are NOT possible answers; every word in
      GROUPS above is automatically a legal guess too. Lengths run 3-10
@@ -790,17 +761,21 @@
   }
 
   // Hints in the order the button hands them out: the written clue
-  // first, then a letter for anyone still stuck.
+  // first, then two letters for anyone still stuck.
   //
-  // That letter comes from the middle, not the start. On a three-letter
+  // Those letters come from the middle, not the start. On a three-letter
   // pet the opening letter is a third of the answer, and the first
   // letter is also the one guessing already tends to pin down — a
-  // middle letter narrows more and gives away less.
+  // middle letter narrows more and gives away less. The second letter
+  // sits right next to the first, so the two form a contiguous window
+  // into the word instead of two scattered reveals.
   var MID = Math.floor(LEN / 2);
+  var MID2 = MID - 1;
 
   var HINTS = [];
   if (CLUES[ANSWER]) HINTS.push(CLUES[ANSWER]);
   HINTS.push("Its " + ordinal(MID + 1) + " letter is “" + ANSWER[MID].toUpperCase() + "”.");
+  HINTS.push("Its " + ordinal(MID2 + 1) + " letter is “" + ANSWER[MID2].toUpperCase() + "”.");
 
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);

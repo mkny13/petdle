@@ -2,7 +2,7 @@
 
 A Wordle-style daily word game where every answer is a pet — either a kind of
 animal (`hamster`, `axolotl`, `goldfish`) or a specific breed (`poodle`,
-`siamese`, `dachshund`, `cockatiel`).
+`dachshund`, `cockatiel`).
 
 **[index.html](index.html) is the entire game.** No build step, no backend, no
 dependencies — open the file or drop it on any static host.
@@ -12,18 +12,18 @@ dependencies — open the file or drop it on any static host.
 - **12 guesses** instead of Wordle's six.
 - **Variable word length** — the board resizes to fit the day's answer, which
   runs from 3 to 10 letters.
-- **A category hint** above the board, alongside the length: `Cat breed · 8
+- **A category hint** above the board, alongside the length: `Dog breed · 9
   letters`. Playtesting showed that an 8- or 9-letter answer with no category is
-  close to unguessable, so every answer names its group — *Dog breed*, *Cat
-  breed*, *Rabbit breed*, *Pet bird*, *Fish or aquarium pet*, *Reptile or
+  close to unguessable, so every answer names its group — *Dog breed*,
+  *Rabbit breed*, *Pet bird*, *Fish or aquarium pet*, *Reptile or
   amphibian*, *Small furry pet*, *Farm or backyard pet*, *Creepy-crawly pet*, or
   *Kind of pet* for the general ones like `puppy`.
-- **A 💡 hint button**, twice per puzzle: first a written clue about the day's
-  pet (`CLUES` holds one for every answer, and never names the animal or repeats
-  the category), then a single letter from the *middle* of the word. Middle
-  rather than first: on a three-letter pet the opening letter is a third of the
-  answer, and it's the letter guessing tends to pin down anyway. Hints cost no
-  guess; they mark the shared result with a 💡.
+- **A 💡 hint button**, three times per puzzle: first a written clue about the
+  day's pet (`CLUES` holds one for every answer, and never names the animal or
+  repeats the category), then two adjacent letters from the *middle* of the
+  word. Middle rather than first: on a three-letter pet the opening letter is
+  a third of the answer, and it's the letter guessing tends to pin down
+  anyway. Hints cost no guess; they mark the shared result with a 💡.
 - **Standard feedback colors**: green = right letter, right spot; yellow =
   right letter, wrong spot; gray = not in the word. Duplicate letters use
   Wordle's two-pass rule, so a second `n` only turns yellow if the answer
@@ -32,9 +32,9 @@ dependencies — open the file or drop it on any static host.
   keyboard support.
 - **Guesses must be real animal words** of the right length — but *any* animal
   counts, not just pets, so `elephant` is a fine way to probe letters while
-  hunting an 8-letter cat breed. A rejected guess shakes the row and costs
-  nothing. Restricting guesses to *pets* would be brutal (136 words); opening it
-  to any animal keeps 38–109 legal guesses at every length the game uses.
+  hunting an 8-letter dog breed. A rejected guess shakes the row and costs
+  nothing. Restricting guesses to *pets* would be brutal (114 words); opening it
+  to any animal keeps 37–103 legal guesses at every length the game uses.
 - Progress is saved in `localStorage`, so closing the tab mid-game is safe.
   Finish and you get a shareable emoji grid.
 
@@ -43,8 +43,8 @@ dependencies — open the file or drop it on any static host.
 The answer is picked with no server involved: the local date (`YYYY-MM-DD`) is
 run through an FNV-1a hash and the result indexes into the sorted word list.
 Everyone who opens the page on the same calendar day gets the same pet, and a
-new one appears at local midnight. Over a two-year span this uses 134 of the
-136 words with no back-to-back repeats.
+new one appears at local midnight. Over a two-year span this uses 112 of the
+114 words with no back-to-back repeats.
 
 Because it's all client-side, the word list is visible in the page source —
 unavoidable for a static game, and not worth obfuscating.

@@ -340,6 +340,31 @@
     border: 1px solid var(--line);
   }
 
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 14px 0 6px;
+  }
+
+  .field-label:first-of-type { margin-top: 4px; }
+
+  .radio-row { display: flex; gap: 16px; font-size: 14px; }
+  .radio-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  #feedback-text {
+    width: 100%;
+    min-height: 100px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+  }
+
   .answer-word {
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -373,6 +398,7 @@
   <div class="right">
     <button class="icon-btn" id="hint-btn" aria-label="Get a hint">💡</button>
     <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
+    <button class="icon-btn" id="feedback-btn" aria-label="Report a bug or suggest a feature">💬</button>
   </div>
 </header>
 
@@ -417,6 +443,22 @@
     <div id="share-grid"></div>
     <button class="btn" id="share-btn">Share result</button>
     <button class="btn secondary" data-close>Keep looking at the board</button>
+  </div>
+</div>
+
+<div class="overlay" id="feedback-overlay">
+  <div class="card">
+    <h2>Report a bug or suggest a feature</h2>
+    <p>Found something broken, or have an idea for Petle? Let me know — this opens a prefilled GitHub issue you can send with one click.</p>
+    <span class="field-label">Type</span>
+    <div class="radio-row">
+      <label><input type="radio" name="feedback-type" value="bug" checked> Bug</label>
+      <label><input type="radio" name="feedback-type" value="enhancement"> Feature idea</label>
+    </div>
+    <span class="field-label">Details</span>
+    <textarea id="feedback-text" placeholder="What happened, or what would you like to see?"></textarea>
+    <button class="btn" id="feedback-submit-btn">Open GitHub issue</button>
+    <button class="btn secondary" data-close>Cancel</button>
   </div>
 </div>
 
@@ -1121,6 +1163,31 @@
     } else {
       showEnd();
     }
+  });
+
+  document.getElementById("feedback-btn").addEventListener("click", function () {
+    open(document.getElementById("feedback-overlay"));
+  });
+
+  document.getElementById("feedback-submit-btn").addEventListener("click", function () {
+    var type = document.querySelector('input[name="feedback-type"]:checked').value;
+    var text = document.getElementById("feedback-text").value.trim();
+    if (!text) {
+      toast("Add a few details first!");
+      return;
+    }
+    var title = (type === "bug" ? "Bug: " : "Feature: ") + text.slice(0, 60).replace(/\s+/g, " ");
+    var body = text
+      + "\n\n---\nPet #" + PUZZLE_NO
+      + "\n" + navigator.userAgent;
+    var url = "https://github.com/mkny13/petdle/issues/new"
+      + "?title=" + encodeURIComponent(title)
+      + "&body=" + encodeURIComponent(body)
+      + "&labels=" + encodeURIComponent(type);
+    window.open(url, "_blank", "noopener");
+    document.getElementById("feedback-text").value = "";
+    close(document.getElementById("feedback-overlay"));
+    toast("Opening GitHub to file it — thanks!");
   });
 
   document.querySelectorAll("[data-close]").forEach(function (b) {

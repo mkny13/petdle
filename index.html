@@ -385,6 +385,64 @@
     .key { height: 44px; }
     h1 { font-size: 20px; }
   }
+
+  #archive-bar {
+    flex: none;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--key);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+
+  #archive-bar.show { display: flex; }
+
+  #archive-bar button {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .catchup-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+
+  .catchup-row:last-child { border-bottom: none; }
+
+  .catchup-label b { color: var(--text); }
+  .catchup-label { color: var(--muted); }
+
+  .catchup-status {
+    flex: none;
+    border: 1px solid var(--line);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .catchup-status.won { border-color: var(--green); color: var(--green); }
+  .catchup-status.lost { border-color: var(--gray); color: var(--muted); }
 </style>
 </head>
 <body>
@@ -396,6 +454,7 @@
     <div class="sub" id="puzzle-no">Daily pet word</div>
   </div>
   <div class="right">
+    <button class="icon-btn" id="catchup-btn" aria-label="Catch up on missed days">📅</button>
     <button class="icon-btn" id="hint-btn" aria-label="Get a hint">💡</button>
     <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
     <button class="icon-btn" id="feedback-btn" aria-label="Report a bug or suggest a feature">💬</button>
@@ -403,6 +462,7 @@
 </header>
 
 <main>
+  <div id="archive-bar"><span id="archive-bar-text"></span> <button id="back-today-btn">Back to today</button></div>
   <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters</div>
   <div id="clue"></div>
   <div id="board-wrap"><div id="board"></div></div>
@@ -459,6 +519,15 @@
     <textarea id="feedback-text" placeholder="What happened, or what would you like to see?"></textarea>
     <button class="btn" id="feedback-submit-btn">Open GitHub issue</button>
     <button class="btn secondary" data-close>Cancel</button>
+  </div>
+</div>
+
+<div class="overlay" id="catchup-overlay">
+  <div class="card">
+    <h2>Catch up on missed days</h2>
+    <p>Pick an earlier pet to play. This doesn't touch today's puzzle — come back any time with 📅.</p>
+    <div id="catchup-list"></div>
+    <button class="btn secondary" data-close>Close</button>
   </div>
 </div>
 
@@ -787,10 +856,12 @@
     return h >>> 0;
   }
 
-  var DATE_KEY = localDateKey();
-  var ANSWER = WORDS[hashString("petle-" + DATE_KEY) % WORDS.length];
-  var LEN = ANSWER.length;
-  var CATEGORY = CATEGORY_OF[ANSWER];
+  // REAL_DATE_KEY is the actual, wall-clock "today" — it never changes
+  // while the tab is open (except at midnight rollover). activeDateKey is
+  // whichever day's pet is currently on the board: today's, or an earlier
+  // day opened from the "catch up on missed days" picker.
+  var REAL_DATE_KEY = localDateKey();
+  var activeDateKey = REAL_DATE_KEY;
 
   function ordinal(n) {
     var teens = n % 100;
@@ -802,31 +873,53 @@
     return n + "th";
   }
 
-  // Hints in the order the button hands them out: the written clue
-  // first, then two letters for anyone still stuck.
-  //
-  // Those letters come from the middle, not the start. On a three-letter
-  // pet the opening letter is a third of the answer, and the first
-  // letter is also the one guessing already tends to pin down — a
-  // middle letter narrows more and gives away less. The second letter
-  // sits right next to the first, so the two form a contiguous window
-  // into the word instead of two scattered reveals.
-  var MID = Math.floor(LEN / 2);
-  var MID2 = MID - 1;
-
-  var HINTS = [];
-  if (CLUES[ANSWER]) HINTS.push(CLUES[ANSWER]);
-  HINTS.push("Its " + ordinal(MID + 1) + " letter is “" + ANSWER[MID].toUpperCase() + "”.");
-  HINTS.push("Its " + ordinal(MID2 + 1) + " letter is “" + ANSWER[MID2].toUpperCase() + "”.");
-
   // Puzzle number, counted from the launch date, just for flavour.
   var EPOCH = Date.UTC(2024, 0, 1);
-  var todayUTC = Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-  var PUZZLE_NO = Math.round((todayUTC - EPOCH) / 86400000);
+
+  // Everything needed to play a given calendar day's pet, derived purely
+  // from its date key so any past day can be reconstructed on demand.
+  function puzzleForDate(dateKey) {
+    var answer = WORDS[hashString("petle-" + dateKey) % WORDS.length];
+    var len = answer.length;
+    var category = CATEGORY_OF[answer];
+
+    // Hints in the order the button hands them out: the written clue
+    // first, then two letters for anyone still stuck.
+    //
+    // Those letters come from the middle, not the start. On a three-letter
+    // pet the opening letter is a third of the answer, and the first
+    // letter is also the one guessing already tends to pin down — a
+    // middle letter narrows more and gives away less. The second letter
+    // sits right next to the first, so the two form a contiguous window
+    // into the word instead of two scattered reveals.
+    var mid = Math.floor(len / 2);
+    var mid2 = mid - 1;
+    var hintList = [];
+    if (CLUES[answer]) hintList.push(CLUES[answer]);
+    hintList.push("Its " + ordinal(mid + 1) + " letter is “" + answer[mid].toUpperCase() + "”.");
+    hintList.push("Its " + ordinal(mid2 + 1) + " letter is “" + answer[mid2].toUpperCase() + "”.");
+
+    var parts = dateKey.split("-").map(Number);
+    var dUTC = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+    var puzzleNo = Math.round((dUTC - EPOCH) / 86400000);
+
+    return { dateKey: dateKey, answer: answer, len: len, category: category, hints: hintList, puzzleNo: puzzleNo };
+  }
+
+  function formatDateLong(dateKey) {
+    var parts = dateKey.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  var ANSWER, LEN, CATEGORY, HINTS, PUZZLE_NO;
 
   /* --------------------------- state ---------------------------- */
 
-  var STORE_KEY = "petle-state";
+  // Each calendar day gets its own storage slot, so playing an earlier
+  // missed day never overwrites today's in-progress game (or vice versa).
+  function storeKeyFor(dateKey) { return "petle-state-" + dateKey; }
+
   var guesses = [];      // submitted guesses
   var current = "";      // in-progress guess
   var status = "playing"; // playing | won | lost
@@ -835,23 +928,38 @@
 
   function save() {
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        date: DATE_KEY, guesses: guesses, status: status, hints: hints
+      localStorage.setItem(storeKeyFor(activeDateKey), JSON.stringify({
+        date: activeDateKey, guesses: guesses, status: status, hints: hints
       }));
     } catch (e) { /* private mode — just don't persist */ }
   }
 
-  function load() {
+  function loadState() {
     try {
-      var raw = localStorage.getItem(STORE_KEY);
+      var raw = localStorage.getItem(storeKeyFor(activeDateKey));
       if (!raw) return;
       var s = JSON.parse(raw);
-      if (!s || s.date !== DATE_KEY || !Array.isArray(s.guesses)) return;
-      // Guard against a word-list edit changing today's answer length.
+      if (!s || s.date !== activeDateKey || !Array.isArray(s.guesses)) return;
+      // Guard against a word-list edit changing that day's answer length.
       if (s.guesses.some(function (g) { return g.length !== LEN; })) return;
       guesses = s.guesses;
       status = s.status === "won" || s.status === "lost" ? s.status : "playing";
       hints = Math.min(Math.max(parseInt(s.hints, 10) || 0, 0), HINTS.length);
+    } catch (e) { /* ignore corrupt state */ }
+  }
+
+  // A player who last used the pre-archive version has one game saved
+  // under the old single, date-agnostic key. Move it into today's slot
+  // (if today's slot is still empty) so it isn't silently lost.
+  function migrateOldState() {
+    try {
+      var raw = localStorage.getItem("petle-state");
+      if (!raw) return;
+      localStorage.removeItem("petle-state");
+      var s = JSON.parse(raw);
+      if (s && s.date && !localStorage.getItem(storeKeyFor(s.date))) {
+        localStorage.setItem(storeKeyFor(s.date), raw);
+      }
     } catch (e) { /* ignore corrupt state */ }
   }
 
@@ -891,9 +999,48 @@
   var clueEl = document.getElementById("clue");
   var hintBtn = document.getElementById("hint-btn");
 
-  document.getElementById("len-count").textContent = LEN;
-  document.getElementById("category").textContent = CATEGORY;
-  document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
+  function updateHeader() {
+    document.getElementById("len-count").textContent = LEN;
+    document.getElementById("category").textContent = CATEGORY;
+    document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
+
+    var bar = document.getElementById("archive-bar");
+    if (activeDateKey === REAL_DATE_KEY) {
+      bar.classList.remove("show");
+    } else {
+      document.getElementById("archive-bar-text").textContent =
+        "Playing " + formatDateLong(activeDateKey) + " — today's pet is still waiting for you.";
+      bar.classList.add("show");
+    }
+  }
+
+  // Switches the whole game to a given day: recomputes that day's pet,
+  // restores any saved progress for it, and redraws everything. Used both
+  // to boot into today's puzzle and to open a day from the catch-up list.
+  function loadPuzzle(dateKey) {
+    activeDateKey = dateKey;
+    var p = puzzleForDate(dateKey);
+    ANSWER = p.answer;
+    LEN = p.len;
+    CATEGORY = p.category;
+    HINTS = p.hints;
+    PUZZLE_NO = p.puzzleNo;
+
+    guesses = [];
+    current = "";
+    status = "playing";
+    hints = 0;
+    busy = false;
+    loadState();
+
+    updateHeader();
+    buildBoard();
+    sizeBoard();
+    render();
+    renderClue();
+
+    if (status !== "playing") setTimeout(showEnd, 200);
+  }
 
   function buildBoard() {
     boardEl.innerHTML = "";
@@ -1159,7 +1306,7 @@
 
   document.getElementById("stats-btn").addEventListener("click", function () {
     if (status === "playing") {
-      toast("Finish today's pet first! " + (MAX_GUESSES - guesses.length) + " guesses left");
+      toast("Finish this pet first! " + (MAX_GUESSES - guesses.length) + " guesses left");
     } else {
       showEnd();
     }
@@ -1167,6 +1314,75 @@
 
   document.getElementById("feedback-btn").addEventListener("click", function () {
     open(document.getElementById("feedback-overlay"));
+  });
+
+  document.getElementById("back-today-btn").addEventListener("click", function () {
+    loadPuzzle(REAL_DATE_KEY);
+  });
+
+  /* ------------------------- catch-up list ------------------------ */
+
+  // How many past days the picker offers — enough for a real gap without
+  // listing back to the puzzle's epoch.
+  var CATCHUP_DAYS = 30;
+
+  function buildCatchupList() {
+    var listEl = document.getElementById("catchup-list");
+    listEl.innerHTML = "";
+    var today = new Date();
+    var rows = 0;
+
+    for (var i = 1; i <= CATCHUP_DAYS; i++) {
+      var d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+      if (Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) < EPOCH) break;
+      var dateKey = localDateKey(d);
+      var p = puzzleForDate(dateKey);
+
+      var saved = null;
+      try {
+        var raw = localStorage.getItem(storeKeyFor(dateKey));
+        if (raw) saved = JSON.parse(raw);
+      } catch (e) { /* ignore corrupt state */ }
+
+      var row = document.createElement("div");
+      row.className = "catchup-row";
+
+      var label = document.createElement("div");
+      label.className = "catchup-label";
+      label.innerHTML = "<b>Pet #" + p.puzzleNo + "</b> · " + formatDateLong(dateKey);
+      row.appendChild(label);
+
+      var btn = document.createElement("button");
+      btn.className = "catchup-status";
+      if (saved && saved.status === "won") {
+        btn.textContent = "✅ " + saved.guesses.length + "/" + MAX_GUESSES;
+        btn.classList.add("won");
+      } else if (saved && saved.status === "lost") {
+        btn.textContent = "❌ Review";
+        btn.classList.add("lost");
+      } else {
+        btn.textContent = "▶️ Play";
+      }
+      btn.addEventListener("click", (function (dateKey) {
+        return function () {
+          close(document.getElementById("catchup-overlay"));
+          loadPuzzle(dateKey);
+        };
+      })(dateKey));
+      row.appendChild(btn);
+
+      listEl.appendChild(row);
+      rows++;
+    }
+
+    if (!rows) {
+      listEl.innerHTML = "<p>No earlier days yet — check back tomorrow!</p>";
+    }
+  }
+
+  document.getElementById("catchup-btn").addEventListener("click", function () {
+    buildCatchupList();
+    open(document.getElementById("catchup-overlay"));
   });
 
   document.getElementById("feedback-submit-btn").addEventListener("click", function () {
@@ -1217,12 +1433,9 @@
 
   /* ---------------------------- boot ---------------------------- */
 
-  load();
-  buildBoard();
+  migrateOldState();
   buildKeyboard();
-  sizeBoard();
-  render();
-  renderClue();
+  loadPuzzle(REAL_DATE_KEY);
 
   window.addEventListener("resize", sizeBoard);
   window.addEventListener("orientationchange", function () { setTimeout(sizeBoard, 150); });
@@ -1235,11 +1448,13 @@
     }
   } catch (e) { /* ignore */ }
 
-  if (status !== "playing") setTimeout(showEnd, 400);
-
-  // If the tab is left open past midnight, pick up the new pet on return.
+  // If the tab is left open past midnight while looking at today's pet,
+  // pick up the new one on return. Not while browsing a missed day —
+  // that would yank the player back to today mid-catch-up.
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden && localDateKey() !== DATE_KEY) location.reload();
+    if (!document.hidden && activeDateKey === REAL_DATE_KEY && localDateKey() !== REAL_DATE_KEY) {
+      location.reload();
+    }
   });
 })();
 </script>

@@ -449,7 +449,7 @@
 <div class="overlay" id="feedback-overlay">
   <div class="card">
     <h2>Report a bug or suggest a feature</h2>
-    <p>Found something broken, or have an idea for Petle? Let me know — this opens a prefilled GitHub issue you can send with one click.</p>
+    <p>Found something broken, or have an idea for Petle? Send it straight over — no account needed.</p>
     <span class="field-label">Type</span>
     <div class="radio-row">
       <label><input type="radio" name="feedback-type" value="bug" checked> Bug</label>
@@ -457,7 +457,8 @@
     </div>
     <span class="field-label">Details</span>
     <textarea id="feedback-text" placeholder="What happened, or what would you like to see?"></textarea>
-    <button class="btn" id="feedback-submit-btn">Open GitHub issue</button>
+    <input type="text" id="feedback-website" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px;">
+    <button class="btn" id="feedback-submit-btn">Send feedback</button>
     <button class="btn secondary" data-close>Cancel</button>
   </div>
 </div>
@@ -465,6 +466,11 @@
 <script>
 (function () {
   "use strict";
+
+  /* Cloudflare Worker that files the GitHub issue on the player's behalf,
+     so reporting feedback never requires a GitHub login. See
+     cloudflare-worker/ for the source; replace with your deployed URL. */
+  var FEEDBACK_ENDPOINT = "https://petdle-feedback.mkastellec.workers.dev";
 
   /* ---------------------------------------------------------------
      Word list: pet types and specific breeds, 3-12 letters, a-z only,
@@ -1169,25 +1175,55 @@
     open(document.getElementById("feedback-overlay"));
   });
 
-  document.getElementById("feedback-submit-btn").addEventListener("click", function () {
-    var type = document.querySelector('input[name="feedback-type"]:checked').value;
-    var text = document.getElementById("feedback-text").value.trim();
-    if (!text) {
-      toast("Add a few details first!");
-      return;
-    }
-    var title = (type === "bug" ? "Bug: " : "Feature: ") + text.slice(0, 60).replace(/\s+/g, " ");
-    var body = text
-      + "\n\n---\nPet #" + PUZZLE_NO
-      + "\n" + navigator.userAgent;
+  function openGithubIssueFallback(type, title, body) {
     var url = "https://github.com/mkny13/petdle/issues/new"
       + "?title=" + encodeURIComponent(title)
       + "&body=" + encodeURIComponent(body)
       + "&labels=" + encodeURIComponent(type);
     window.open(url, "_blank", "noopener");
+    toast("Opening GitHub to file it — thanks!");
+  }
+
+  document.getElementById("feedback-submit-btn").addEventListener("click", function () {
+    var type = document.querySelector('input[name="feedback-type"]:checked').value;
+    var text = document.getElementById("feedback-text").value.trim();
+    var honeypot = document.getElementById("feedback-website").value;
+    if (!text) {
+      toast("Add a few details first!");
+      return;
+    }
+    if (honeypot) {
+      // Likely a bot: pretend success and quietly drop it.
+      document.getElementById("feedback-text").value = "";
+      close(document.getElementById("feedback-overlay"));
+      toast("Thanks!");
+      return;
+    }
+
+    var title = (type === "bug" ? "Bug: " : "Feature: ") + text.slice(0, 60).replace(/\s+/g, " ");
+    var body = text
+      + "\n\n---\nPet #" + PUZZLE_NO
+      + "\n" + navigator.userAgent;
+
     document.getElementById("feedback-text").value = "";
     close(document.getElementById("feedback-overlay"));
-    toast("Opening GitHub to file it — thanks!");
+
+    if (!FEEDBACK_ENDPOINT || FEEDBACK_ENDPOINT.indexOf("YOUR_SUBDOMAIN") !== -1) {
+      openGithubIssueFallback(type, title, body);
+      return;
+    }
+
+    toast("Sending feedback…");
+    fetch(FEEDBACK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: type, text: text, puzzleNo: PUZZLE_NO, userAgent: navigator.userAgent })
+    }).then(function (res) {
+      if (!res.ok) { throw new Error("bad response"); }
+      toast("Thanks — got it!");
+    }).catch(function () {
+      openGithubIssueFallback(type, title, body);
+    });
   });
 
   document.querySelectorAll("[data-close]").forEach(function (b) {

@@ -367,6 +367,59 @@
     resize: vertical;
   }
 
+  .text-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  .muted-note {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .name-save-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0 14px;
+  }
+
+  .name-save-row .text-input { flex: 1 1 auto; }
+  .name-save-row .btn { width: auto; margin: 0; padding: 10px 14px; white-space: nowrap; }
+
+  #leaderboard-list { margin: 10px 0; }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-row.lb-head {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 700;
+  }
+
+  .lb-name { flex: 1 1 auto; font-weight: 700; overflow-wrap: anywhere; }
+  .lb-row.lb-head .lb-name { font-weight: 700; }
+  .lb-stat { min-width: 46px; text-align: center; color: var(--muted); }
+  .lb-row.lb-you .lb-name { color: var(--accent); }
+
   .answer-word {
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -407,6 +460,7 @@
   </div>
   <div class="right">
     <button class="icon-btn" id="hint-btn" aria-label="Get a hint">💡</button>
+    <button class="icon-btn" id="leaderboard-btn" aria-label="Leaderboard">🏆</button>
     <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
     <button class="icon-btn" id="feedback-btn" aria-label="Report a bug or suggest a feature">💬</button>
   </div>
@@ -457,6 +511,29 @@
   </div>
 </div>
 
+<div class="overlay" id="name-overlay">
+  <div class="card">
+    <h2>What's your name? 🐾</h2>
+    <p>Petle keeps a family leaderboard across everyone's devices. Pick a name so your results show up under it — you can change it later from the leaderboard.</p>
+    <input type="text" class="text-input" id="name-input" maxlength="24" placeholder="e.g. Mike" autocomplete="off">
+    <button class="btn" id="name-save-btn">Save and play</button>
+  </div>
+</div>
+
+<div class="overlay" id="leaderboard-overlay">
+  <div class="card">
+    <h2>Family leaderboard 🏆</h2>
+    <p class="muted-note">Ranked by current streak.</p>
+    <div id="leaderboard-list"></div>
+    <span class="field-label">Playing as</span>
+    <div class="name-save-row">
+      <input type="text" class="text-input" id="leaderboard-name-input" maxlength="24" autocomplete="off">
+      <button class="btn" id="leaderboard-name-save-btn">Save</button>
+    </div>
+    <button class="btn secondary" data-close>Close</button>
+  </div>
+</div>
+
 <div class="overlay" id="feedback-overlay">
   <div class="card">
     <h2>Report a bug or suggest a feature</h2>
@@ -482,6 +559,11 @@
      so reporting feedback never requires a GitHub login. See
      cloudflare-worker/ for the source; replace with your deployed URL. */
   var FEEDBACK_ENDPOINT = "https://petdle-feedback.mkastellec.workers.dev";
+
+  /* Same Worker also backs the family leaderboard (see cloudflare-worker/,
+     which needs a one-time Workers KV namespace before this works). Falls
+     back to a friendly "not set up" message rather than erroring. */
+  var LEADERBOARD_ENDPOINT = FEEDBACK_ENDPOINT + "/leaderboard";
 
   /* ---------------------------------------------------------------
      Word list: pet types and specific breeds, 3-12 letters, a-z and a
@@ -930,6 +1012,94 @@
     saveStats();
   }
 
+  /* -------------------------- leaderboard ------------------------- */
+
+  // Each family member's device stores its own name locally; the Worker
+  // is just a shared bulletin board keyed by that name, so nothing here
+  // needs an account or login.
+  var PLAYER_NAME_KEY = "petle-player-name";
+
+  function getPlayerName() {
+    try { return localStorage.getItem(PLAYER_NAME_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function setPlayerName(name) {
+    try { localStorage.setItem(PLAYER_NAME_KEY, name); } catch (e) { /* private mode */ }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // Best-effort: a family scoreboard is nice to have, never worth
+  // blocking or erroring the actual game over.
+  function syncLeaderboard(won) {
+    var name = getPlayerName();
+    if (!name || !LEADERBOARD_ENDPOINT) return;
+    fetch(LEADERBOARD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name,
+        date: DATE_KEY,
+        puzzleNo: PUZZLE_NO,
+        status: won ? "won" : "lost",
+        guesses: guesses.length,
+        hints: hints,
+        currentStreak: STATS.currentStreak,
+        maxStreak: STATS.maxStreak,
+        played: STATS.played,
+        wins: STATS.wins
+      })
+    }).catch(function () { /* offline or Worker not deployed yet — fine */ });
+  }
+
+  function renderLeaderboardRows(players) {
+    var listEl = document.getElementById("leaderboard-list");
+    if (!players.length) {
+      listEl.innerHTML = "<p class=\"muted-note\">No results yet — be the first to finish today's pet!</p>";
+      return;
+    }
+    players.sort(function (a, b) {
+      return b.currentStreak - a.currentStreak || b.maxStreak - a.maxStreak;
+    });
+    var me = getPlayerName().toLowerCase();
+    var head = "<div class=\"lb-row lb-head\">" +
+      "<span class=\"lb-name\">Player</span>" +
+      "<span class=\"lb-stat\">Streak</span>" +
+      "<span class=\"lb-stat\">Best</span>" +
+      "<span class=\"lb-stat\">Today</span></div>";
+    var rows = players.map(function (p) {
+      var today = p.date === DATE_KEY
+        ? (p.status === "won" ? "✅ " + p.guesses + "/12" : "❌")
+        : "—";
+      var mine = me && String(p.name).toLowerCase() === me;
+      return "<div class=\"lb-row" + (mine ? " lb-you" : "") + "\">" +
+        "<span class=\"lb-name\">" + escapeHtml(p.name) + "</span>" +
+        "<span class=\"lb-stat\">🔥" + p.currentStreak + "</span>" +
+        "<span class=\"lb-stat\">🏆" + p.maxStreak + "</span>" +
+        "<span class=\"lb-stat\">" + today + "</span></div>";
+    }).join("");
+    listEl.innerHTML = head + rows;
+  }
+
+  function fetchLeaderboard() {
+    var listEl = document.getElementById("leaderboard-list");
+    if (!LEADERBOARD_ENDPOINT) {
+      listEl.innerHTML = "<p class=\"muted-note\">Leaderboard isn't set up yet.</p>";
+      return;
+    }
+    listEl.innerHTML = "<p class=\"muted-note\">Loading…</p>";
+    fetch(LEADERBOARD_ENDPOINT)
+      .then(function (res) { if (!res.ok) throw new Error("bad response"); return res.json(); })
+      .then(function (data) { renderLeaderboardRows(data.players || []); })
+      .catch(function () {
+        listEl.innerHTML = "<p class=\"muted-note\">Couldn't load the leaderboard — try again later.</p>";
+      });
+  }
+
   function save() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
@@ -1191,7 +1361,10 @@
       }
       save();
 
-      if (status === "won" || status === "lost") recordResult(status === "won");
+      if (status === "won" || status === "lost") {
+        recordResult(status === "won");
+        syncLeaderboard(status === "won");
+      }
 
       if (status !== "playing") {
         renderClue();   // greys out the hint button now the pet is known
@@ -1277,6 +1450,28 @@
 
   document.getElementById("feedback-btn").addEventListener("click", function () {
     open(document.getElementById("feedback-overlay"));
+  });
+
+  document.getElementById("leaderboard-btn").addEventListener("click", function () {
+    document.getElementById("leaderboard-name-input").value = getPlayerName();
+    open(document.getElementById("leaderboard-overlay"));
+    fetchLeaderboard();
+  });
+
+  document.getElementById("leaderboard-name-save-btn").addEventListener("click", function () {
+    var val = document.getElementById("leaderboard-name-input").value.trim().slice(0, 24);
+    if (!val) { toast("Enter a name first"); return; }
+    setPlayerName(val);
+    toast("Saved!");
+    fetchLeaderboard();
+  });
+
+  document.getElementById("name-save-btn").addEventListener("click", function () {
+    var val = document.getElementById("name-input").value.trim().slice(0, 24);
+    if (!val) { toast("Enter a name first"); return; }
+    setPlayerName(val);
+    close(document.getElementById("name-overlay"));
+    maybeShowHelp();
   });
 
   function openGithubIssueFallback(type, title, body) {
@@ -1367,15 +1562,24 @@
   window.addEventListener("resize", sizeBoard);
   window.addEventListener("orientationchange", function () { setTimeout(sizeBoard, 150); });
 
-  // First-time visitors get the rules automatically.
-  try {
-    if (!localStorage.getItem("petle-seen-help")) {
-      open(document.getElementById("help-overlay"));
-      localStorage.setItem("petle-seen-help", "1");
-    }
-  } catch (e) { /* ignore */ }
+  // First-time visitors get the rules automatically — but only after
+  // they've picked a name, so the two overlays never stack.
+  function maybeShowHelp() {
+    try {
+      if (!localStorage.getItem("petle-seen-help")) {
+        open(document.getElementById("help-overlay"));
+        localStorage.setItem("petle-seen-help", "1");
+      }
+    } catch (e) { /* ignore */ }
+  }
 
-  if (status !== "playing") setTimeout(showEnd, 400);
+  if (!getPlayerName()) {
+    open(document.getElementById("name-overlay"));
+  } else {
+    maybeShowHelp();
+  }
+
+  if (status !== "playing" && getPlayerName()) setTimeout(showEnd, 400);
 
   // If the tab is left open past midnight, pick up the new pet on return.
   document.addEventListener("visibilitychange", function () {

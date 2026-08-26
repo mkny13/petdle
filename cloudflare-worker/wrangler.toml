@@ -1,0 +1,10 @@
+name = "petdle-feedback"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Backs the family leaderboard. Create with:
+#   npx wrangler kv namespace create LEADERBOARD
+# then paste the printed id below.
+kv_namespaces = [
+  { binding = "LEADERBOARD", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+]

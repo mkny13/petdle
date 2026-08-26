@@ -193,6 +193,8 @@
     100% { transform: rotateX(0deg); }
   }
 
+  .tile.word-gap { margin-right: 14px; }
+
   .tile.correct, .tile.present, .tile.absent { color: #fff; border-color: transparent; }
   .tile.correct { background: var(--green); }
   .tile.present { background: var(--yellow); }
@@ -365,6 +367,59 @@
     resize: vertical;
   }
 
+  .text-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+  }
+
+  .muted-note {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .name-save-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 6px 0 14px;
+  }
+
+  .name-save-row .text-input { flex: 1 1 auto; }
+  .name-save-row .btn { width: auto; margin: 0; padding: 10px 14px; white-space: nowrap; }
+
+  #leaderboard-list { margin: 10px 0; }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+
+  .lb-row:last-child { border-bottom: none; }
+
+  .lb-row.lb-head {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-weight: 700;
+  }
+
+  .lb-name { flex: 1 1 auto; font-weight: 700; overflow-wrap: anywhere; }
+  .lb-row.lb-head .lb-name { font-weight: 700; }
+  .lb-stat { min-width: 46px; text-align: center; color: var(--muted); }
+  .lb-row.lb-you .lb-name { color: var(--accent); }
+
   .answer-word {
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -379,6 +434,14 @@
     margin: 12px 0;
     white-space: pre;
     font-family: system-ui, sans-serif;
+  }
+
+  #streak-line {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 12px;
   }
 
   @media (max-height: 640px) {
@@ -456,6 +519,7 @@
   <div class="right">
     <button class="icon-btn" id="catchup-btn" aria-label="Catch up on missed days">📅</button>
     <button class="icon-btn" id="hint-btn" aria-label="Get a hint">💡</button>
+    <button class="icon-btn" id="leaderboard-btn" aria-label="Leaderboard">🏆</button>
     <button class="icon-btn" id="stats-btn" aria-label="Results">📊</button>
     <button class="icon-btn" id="feedback-btn" aria-label="Report a bug or suggest a feature">💬</button>
   </div>
@@ -463,7 +527,7 @@
 
 <main>
   <div id="archive-bar"><span id="archive-bar-text"></span> <button id="back-today-btn">Back to today</button></div>
-  <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters</div>
+  <div id="length-note"><b id="category">Kind of pet</b> · <b id="len-count">5</b> letters<span id="word-note"></span></div>
   <div id="clue"></div>
   <div id="board-wrap"><div id="board"></div></div>
 </main>
@@ -501,15 +565,39 @@
     <h2 id="end-title">Nice!</h2>
     <p id="end-msg"></p>
     <div id="share-grid"></div>
+    <p id="streak-line"></p>
     <button class="btn" id="share-btn">Share result</button>
     <button class="btn secondary" data-close>Keep looking at the board</button>
+  </div>
+</div>
+
+<div class="overlay" id="name-overlay">
+  <div class="card">
+    <h2>What's your name? 🐾</h2>
+    <p>Petle keeps a family leaderboard across everyone's devices. Pick a name so your results show up under it — you can change it later from the leaderboard.</p>
+    <input type="text" class="text-input" id="name-input" maxlength="24" placeholder="e.g. Mike" autocomplete="off">
+    <button class="btn" id="name-save-btn">Save and play</button>
+  </div>
+</div>
+
+<div class="overlay" id="leaderboard-overlay">
+  <div class="card">
+    <h2>Family leaderboard 🏆</h2>
+    <p class="muted-note">Ranked by current streak.</p>
+    <div id="leaderboard-list"></div>
+    <span class="field-label">Playing as</span>
+    <div class="name-save-row">
+      <input type="text" class="text-input" id="leaderboard-name-input" maxlength="24" autocomplete="off">
+      <button class="btn" id="leaderboard-name-save-btn">Save</button>
+    </div>
+    <button class="btn secondary" data-close>Close</button>
   </div>
 </div>
 
 <div class="overlay" id="feedback-overlay">
   <div class="card">
     <h2>Report a bug or suggest a feature</h2>
-    <p>Found something broken, or have an idea for Petle? Let me know — this opens a prefilled GitHub issue you can send with one click.</p>
+    <p>Found something broken, or have an idea for Petle? Send it straight over — no account needed.</p>
     <span class="field-label">Type</span>
     <div class="radio-row">
       <label><input type="radio" name="feedback-type" value="bug" checked> Bug</label>
@@ -517,7 +605,8 @@
     </div>
     <span class="field-label">Details</span>
     <textarea id="feedback-text" placeholder="What happened, or what would you like to see?"></textarea>
-    <button class="btn" id="feedback-submit-btn">Open GitHub issue</button>
+    <input type="text" id="feedback-website" name="website" autocomplete="off" tabindex="-1" aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px;">
+    <button class="btn" id="feedback-submit-btn">Send feedback</button>
     <button class="btn secondary" data-close>Cancel</button>
   </div>
 </div>
@@ -535,10 +624,27 @@
 (function () {
   "use strict";
 
+  /* Cloudflare Worker that files the GitHub issue on the player's behalf,
+     so reporting feedback never requires a GitHub login. See
+     cloudflare-worker/ for the source; replace with your deployed URL. */
+  var FEEDBACK_ENDPOINT = "https://petdle-feedback.mkastellec.workers.dev";
+
+  /* Same Worker also backs the family leaderboard (see cloudflare-worker/,
+     which needs a one-time Workers KV namespace before this works). Falls
+     back to a friendly "not set up" message rather than erroring. */
+  var LEADERBOARD_ENDPOINT = FEEDBACK_ENDPOINT + "/leaderboard";
+
   /* ---------------------------------------------------------------
-     Word list: pet types and specific breeds, 3-12 letters, a-z only,
-     grouped by the category shown as a hint above the board. Without
-     the hint, longer answers are close to unguessable.
+     Word list: pet types and specific breeds, 3-12 letters, a-z and a
+     single space only, grouped by the category shown as a hint above
+     the board. Without the hint, longer answers are close to
+     unguessable.
+
+     A two-word entry like "guinea pig" plays exactly like a one-word
+     answer: the space is stripped for typing, scoring and length —
+     the board only ever shows letter tiles — and a small gap is drawn
+     between the tiles that mark where the words split, purely as a
+     visual cue.
 
      A word belongs to exactly one category — if it appears twice, the
      first group wins. Group order does not matter: the flattened list
@@ -551,7 +657,7 @@
     ]],
     ["Small furry pet", [
       "rat", "mouse", "hamster", "gerbil", "ferret", "rabbit", "hedgehog",
-      "chinchilla", "degu"
+      "chinchilla", "degu", "guinea pig"
     ]],
     ["Farm or backyard pet", [
       "pig", "hen", "duck", "goat", "pony", "horse", "donkey", "llama",
@@ -568,7 +674,7 @@
     ["Reptile or amphibian", [
       "frog", "toad", "newt", "snake", "gecko", "skink", "anole", "turtle",
       "lizard", "iguana", "python", "axolotl", "tortoise", "chameleon",
-      "salamander"
+      "salamander", "sea turtle"
     ]],
     ["Creepy-crawly pet", [
       "crab", "snail", "tarantula"
@@ -625,6 +731,7 @@
     "hedgehog": "Rolls into a prickly ball when startled.",
     "chinchilla": "Andean rodent with the softest fur alive; bathes in dust.",
     "degu": "Chilean rodent, like a gerbil with a brush-tipped tail.",
+    "guinea pig": "Squeaky, sociable rodent that popcorns when it's happy.",
     // farm and backyard
     "pig": "Pink, curly-tailed, and smarter than most dogs.",
     "hen": "The female one; she lays the breakfast.",
@@ -679,6 +786,7 @@
     "tortoise": "Shelled land plodder that may well outlive you.",
     "chameleon": "Turret eyes, curled tail, colour that shifts with mood.",
     "salamander": "Damp-skinned, long-tailed, and hiding under a log.",
+    "sea turtle": "Paddles the open ocean, only ever comes ashore to nest.",
     // creepy-crawlies
     "crab": "Walks sideways in armour, with pincers up.",
     "snail": "Carries its house and leaves a silver trail.",
@@ -827,9 +935,13 @@
     "otterhound", "ragamuffin", "schipperke", "weimaraner"
   ];
 
-  // Any word above, plus every possible answer, is a legal guess.
+  // Any word above, plus every possible answer, is a legal guess. Guesses
+  // are always typed as plain letters (there's no space key on the board),
+  // so multi-word answers like "guinea pig" go in as their flattened form.
   var VALID_GUESS = {};
-  WORDS.concat(OTHER_ANIMALS).forEach(function (w) { VALID_GUESS[w] = true; });
+  WORDS.concat(OTHER_ANIMALS).forEach(function (w) {
+    VALID_GUESS[w.replace(/ /g, "")] = true;
+  });
 
   function isAnimal(word) {
     return Object.prototype.hasOwnProperty.call(VALID_GUESS, word);
@@ -880,8 +992,23 @@
   // from its date key so any past day can be reconstructed on demand.
   function puzzleForDate(dateKey) {
     var answer = WORDS[hashString("petle-" + dateKey) % WORDS.length];
-    var len = answer.length;
+    // letters is what's actually typed and scored — answer keeps its space
+    // (if any) around for display, sharing and clue/category lookups.
+    var letters = answer.replace(/ /g, "");
+    var len = letters.length;
     var category = CATEGORY_OF[answer];
+
+    // Index (into letters) of the last letter of each word except the
+    // last, so the board can draw a small gap after it. "guinea pig" -> [5].
+    var boundaries = (function () {
+      var parts = answer.split(" ");
+      var b = [], pos = 0;
+      for (var i = 0; i < parts.length - 1; i++) {
+        pos += parts[i].length;
+        b.push(pos - 1);
+      }
+      return b;
+    })();
 
     // Hints in the order the button hands them out: the written clue
     // first, then two letters for anyone still stuck.
@@ -896,14 +1023,17 @@
     var mid2 = mid - 1;
     var hintList = [];
     if (CLUES[answer]) hintList.push(CLUES[answer]);
-    hintList.push("Its " + ordinal(mid + 1) + " letter is “" + answer[mid].toUpperCase() + "”.");
-    hintList.push("Its " + ordinal(mid2 + 1) + " letter is “" + answer[mid2].toUpperCase() + "”.");
+    hintList.push("Its " + ordinal(mid + 1) + " letter is “" + letters[mid].toUpperCase() + "”.");
+    hintList.push("Its " + ordinal(mid2 + 1) + " letter is “" + letters[mid2].toUpperCase() + "”.");
 
-    var parts = dateKey.split("-").map(Number);
-    var dUTC = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+    var parts2 = dateKey.split("-").map(Number);
+    var dUTC = Date.UTC(parts2[0], parts2[1] - 1, parts2[2]);
     var puzzleNo = Math.round((dUTC - EPOCH) / 86400000);
 
-    return { dateKey: dateKey, answer: answer, len: len, category: category, hints: hintList, puzzleNo: puzzleNo };
+    return {
+      dateKey: dateKey, answer: answer, letters: letters, len: len, category: category,
+      boundaries: boundaries, hints: hintList, puzzleNo: puzzleNo
+    };
   }
 
   function formatDateLong(dateKey) {
@@ -912,7 +1042,7 @@
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   }
 
-  var ANSWER, LEN, CATEGORY, HINTS, PUZZLE_NO;
+  var ANSWER, LETTERS, LEN, CATEGORY, BOUNDARIES, HINTS, PUZZLE_NO;
 
   /* --------------------------- state ---------------------------- */
 
@@ -925,6 +1055,148 @@
   var status = "playing"; // playing | won | lost
   var hints = 0;         // how many hints have been asked for
   var busy = false;
+
+  /* --------------------------- streak stats ---------------------------- */
+
+  // Kept separate from the per-day storage slots (each of which only ever
+  // holds one day's puzzle) so streaks survive across days.
+  var STATS_KEY = "petle-stats";
+
+  function loadStats() {
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(STATS_KEY)); } catch (e) { /* ignore */ }
+    if (!s || typeof s !== "object") s = {};
+    return {
+      currentStreak: parseInt(s.currentStreak, 10) || 0,
+      maxStreak: parseInt(s.maxStreak, 10) || 0,
+      played: parseInt(s.played, 10) || 0,
+      wins: parseInt(s.wins, 10) || 0,
+      lastDate: typeof s.lastDate === "string" ? s.lastDate : null,
+      lastResult: s.lastResult === "won" || s.lastResult === "lost" ? s.lastResult : null
+    };
+  }
+
+  function saveStats() {
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(STATS)); } catch (e) { /* private mode */ }
+  }
+
+  function prevDateKey(dateKey) {
+    var parts = dateKey.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() - 1);
+    return localDateKey(d);
+  }
+
+  var STATS = loadStats();
+
+  // Called exactly once per completed puzzle, right when it's decided.
+  // Only ever called for today's puzzle (see submit()) — playing a missed
+  // day from the catch-up picker doesn't move the streak either way.
+  function recordResult(won) {
+    if (STATS.lastDate === REAL_DATE_KEY) return; // already recorded today
+    STATS.played++;
+    if (won) {
+      STATS.wins++;
+      STATS.currentStreak =
+        STATS.lastDate === prevDateKey(REAL_DATE_KEY) && STATS.lastResult === "won"
+          ? STATS.currentStreak + 1
+          : 1;
+      STATS.maxStreak = Math.max(STATS.maxStreak, STATS.currentStreak);
+    } else {
+      STATS.currentStreak = 0;
+    }
+    STATS.lastResult = won ? "won" : "lost";
+    STATS.lastDate = REAL_DATE_KEY;
+    saveStats();
+  }
+
+  /* -------------------------- leaderboard ------------------------- */
+
+  // Each family member's device stores its own name locally; the Worker
+  // is just a shared bulletin board keyed by that name, so nothing here
+  // needs an account or login.
+  var PLAYER_NAME_KEY = "petle-player-name";
+
+  function getPlayerName() {
+    try { return localStorage.getItem(PLAYER_NAME_KEY) || ""; } catch (e) { return ""; }
+  }
+
+  function setPlayerName(name) {
+    try { localStorage.setItem(PLAYER_NAME_KEY, name); } catch (e) { /* private mode */ }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // Best-effort: a family scoreboard is nice to have, never worth
+  // blocking or erroring the actual game over.
+  function syncLeaderboard(won) {
+    var name = getPlayerName();
+    if (!name || !LEADERBOARD_ENDPOINT) return;
+    fetch(LEADERBOARD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name,
+        date: REAL_DATE_KEY,
+        puzzleNo: PUZZLE_NO,
+        status: won ? "won" : "lost",
+        guesses: guesses.length,
+        hints: hints,
+        currentStreak: STATS.currentStreak,
+        maxStreak: STATS.maxStreak,
+        played: STATS.played,
+        wins: STATS.wins
+      })
+    }).catch(function () { /* offline or Worker not deployed yet — fine */ });
+  }
+
+  function renderLeaderboardRows(players) {
+    var listEl = document.getElementById("leaderboard-list");
+    if (!players.length) {
+      listEl.innerHTML = "<p class=\"muted-note\">No results yet — be the first to finish today's pet!</p>";
+      return;
+    }
+    players.sort(function (a, b) {
+      return b.currentStreak - a.currentStreak || b.maxStreak - a.maxStreak;
+    });
+    var me = getPlayerName().toLowerCase();
+    var head = "<div class=\"lb-row lb-head\">" +
+      "<span class=\"lb-name\">Player</span>" +
+      "<span class=\"lb-stat\">Streak</span>" +
+      "<span class=\"lb-stat\">Best</span>" +
+      "<span class=\"lb-stat\">Today</span></div>";
+    var rows = players.map(function (p) {
+      var today = p.date === REAL_DATE_KEY
+        ? (p.status === "won" ? "✅ " + p.guesses + "/12" : "❌")
+        : "—";
+      var mine = me && String(p.name).toLowerCase() === me;
+      return "<div class=\"lb-row" + (mine ? " lb-you" : "") + "\">" +
+        "<span class=\"lb-name\">" + escapeHtml(p.name) + "</span>" +
+        "<span class=\"lb-stat\">🔥" + p.currentStreak + "</span>" +
+        "<span class=\"lb-stat\">🏆" + p.maxStreak + "</span>" +
+        "<span class=\"lb-stat\">" + today + "</span></div>";
+    }).join("");
+    listEl.innerHTML = head + rows;
+  }
+
+  function fetchLeaderboard() {
+    var listEl = document.getElementById("leaderboard-list");
+    if (!LEADERBOARD_ENDPOINT) {
+      listEl.innerHTML = "<p class=\"muted-note\">Leaderboard isn't set up yet.</p>";
+      return;
+    }
+    listEl.innerHTML = "<p class=\"muted-note\">Loading…</p>";
+    fetch(LEADERBOARD_ENDPOINT)
+      .then(function (res) { if (!res.ok) throw new Error("bad response"); return res.json(); })
+      .then(function (data) { renderLeaderboardRows(data.players || []); })
+      .catch(function () {
+        listEl.innerHTML = "<p class=\"muted-note\">Couldn't load the leaderboard — try again later.</p>";
+      });
+  }
 
   function save() {
     try {
@@ -972,10 +1244,10 @@
     var i, ch;
 
     for (i = 0; i < LEN; i++) {
-      if (guess[i] === ANSWER[i]) {
+      if (guess[i] === LETTERS[i]) {
         res[i] = "correct";
       } else {
-        ch = ANSWER[i];
+        ch = LETTERS[i];
         pool[ch] = (pool[ch] || 0) + 1;
       }
     }
@@ -999,10 +1271,14 @@
   var clueEl = document.getElementById("clue");
   var hintBtn = document.getElementById("hint-btn");
 
+  var WORD_GAP = 14; // extra px between tiles that mark a word boundary
+
   function updateHeader() {
     document.getElementById("len-count").textContent = LEN;
     document.getElementById("category").textContent = CATEGORY;
     document.getElementById("puzzle-no").textContent = "Pet #" + PUZZLE_NO;
+    document.getElementById("word-note").textContent =
+      BOUNDARIES.length ? " across " + (BOUNDARIES.length + 1) + " words" : "";
 
     var bar = document.getElementById("archive-bar");
     if (activeDateKey === REAL_DATE_KEY) {
@@ -1017,12 +1293,17 @@
   // Switches the whole game to a given day: recomputes that day's pet,
   // restores any saved progress for it, and redraws everything. Used both
   // to boot into today's puzzle and to open a day from the catch-up list.
-  function loadPuzzle(dateKey) {
+  //
+  // opts.silent skips the auto-popped end screen — used only at boot,
+  // before the name overlay (if any) has had a chance to show first.
+  function loadPuzzle(dateKey, opts) {
     activeDateKey = dateKey;
     var p = puzzleForDate(dateKey);
     ANSWER = p.answer;
+    LETTERS = p.letters;
     LEN = p.len;
     CATEGORY = p.category;
+    BOUNDARIES = p.boundaries;
     HINTS = p.hints;
     PUZZLE_NO = p.puzzleNo;
 
@@ -1039,7 +1320,7 @@
     render();
     renderClue();
 
-    if (status !== "playing") setTimeout(showEnd, 200);
+    if (!(opts && opts.silent) && status !== "playing") setTimeout(showEnd, 200);
   }
 
   function buildBoard() {
@@ -1052,6 +1333,7 @@
       for (var c = 0; c < LEN; c++) {
         var t = document.createElement("div");
         t.className = "tile";
+        if (BOUNDARIES.indexOf(c) !== -1) t.classList.add("word-gap");
         row.appendChild(t);
       }
       boardEl.appendChild(row);
@@ -1063,7 +1345,7 @@
     var gap = 4;
     var availW = boardWrap.clientWidth - 8;
     var availH = boardWrap.clientHeight - 4;
-    var byW = (availW - gap * (LEN - 1)) / LEN;
+    var byW = (availW - gap * (LEN - 1) - WORD_GAP * BOUNDARIES.length) / LEN;
     var byH = (availH - gap * (MAX_GUESSES - 1)) / MAX_GUESSES;
     var size = Math.floor(Math.min(byW, byH, 58));
     if (size < 16) size = 16;
@@ -1228,13 +1510,20 @@
       busy = false;
       paintKeyboard();
 
-      if (guess === ANSWER) {
+      if (guess === LETTERS) {
         status = "won";
         row.classList.add("win");
       } else if (guesses.length >= MAX_GUESSES) {
         status = "lost";
       }
       save();
+
+      // Streak and leaderboard only track today's puzzle — finishing a
+      // missed day from the catch-up picker doesn't move either one.
+      if (activeDateKey === REAL_DATE_KEY && (status === "won" || status === "lost")) {
+        recordResult(status === "won");
+        syncLeaderboard(status === "won");
+      }
 
       if (status !== "playing") {
         renderClue();   // greys out the hint button now the pet is known
@@ -1259,7 +1548,8 @@
   function shareText() {
     var head = "Petle #" + PUZZLE_NO + " " +
       (status === "won" ? guesses.length : "X") + "/" + MAX_GUESSES +
-      " (" + LEN + " letters)" + (hints ? " 💡" : "");
+      " (" + LEN + " letters)" + (hints ? " 💡" : "") +
+      (STATS.currentStreak > 1 ? " 🔥" + STATS.currentStreak : "");
     return head + "\n\n" + shareGrid();
   }
 
@@ -1277,6 +1567,11 @@
       msg.innerHTML = "Today's pet was <span class=\"answer-word\">" + ANSWER + "</span>. Come back tomorrow for a new one!";
     }
     document.getElementById("share-grid").textContent = shareGrid();
+    document.getElementById("streak-line").textContent =
+      (STATS.currentStreak > 0
+        ? "🔥 " + STATS.currentStreak + " day streak"
+        : "No streak yet — win tomorrow's to start one!") +
+      (STATS.maxStreak > STATS.currentStreak ? " · Best: " + STATS.maxStreak : "");
     open(document.getElementById("end-overlay"));
   }
 
@@ -1318,6 +1613,28 @@
 
   document.getElementById("back-today-btn").addEventListener("click", function () {
     loadPuzzle(REAL_DATE_KEY);
+  });
+
+  document.getElementById("leaderboard-btn").addEventListener("click", function () {
+    document.getElementById("leaderboard-name-input").value = getPlayerName();
+    open(document.getElementById("leaderboard-overlay"));
+    fetchLeaderboard();
+  });
+
+  document.getElementById("leaderboard-name-save-btn").addEventListener("click", function () {
+    var val = document.getElementById("leaderboard-name-input").value.trim().slice(0, 24);
+    if (!val) { toast("Enter a name first"); return; }
+    setPlayerName(val);
+    toast("Saved!");
+    fetchLeaderboard();
+  });
+
+  document.getElementById("name-save-btn").addEventListener("click", function () {
+    var val = document.getElementById("name-input").value.trim().slice(0, 24);
+    if (!val) { toast("Enter a name first"); return; }
+    setPlayerName(val);
+    close(document.getElementById("name-overlay"));
+    maybeShowHelp();
   });
 
   /* ------------------------- catch-up list ------------------------ */
@@ -1385,25 +1702,55 @@
     open(document.getElementById("catchup-overlay"));
   });
 
-  document.getElementById("feedback-submit-btn").addEventListener("click", function () {
-    var type = document.querySelector('input[name="feedback-type"]:checked').value;
-    var text = document.getElementById("feedback-text").value.trim();
-    if (!text) {
-      toast("Add a few details first!");
-      return;
-    }
-    var title = (type === "bug" ? "Bug: " : "Feature: ") + text.slice(0, 60).replace(/\s+/g, " ");
-    var body = text
-      + "\n\n---\nPet #" + PUZZLE_NO
-      + "\n" + navigator.userAgent;
+  function openGithubIssueFallback(type, title, body) {
     var url = "https://github.com/mkny13/petdle/issues/new"
       + "?title=" + encodeURIComponent(title)
       + "&body=" + encodeURIComponent(body)
       + "&labels=" + encodeURIComponent(type);
     window.open(url, "_blank", "noopener");
+    toast("Opening GitHub to file it — thanks!");
+  }
+
+  document.getElementById("feedback-submit-btn").addEventListener("click", function () {
+    var type = document.querySelector('input[name="feedback-type"]:checked').value;
+    var text = document.getElementById("feedback-text").value.trim();
+    var honeypot = document.getElementById("feedback-website").value;
+    if (!text) {
+      toast("Add a few details first!");
+      return;
+    }
+    if (honeypot) {
+      // Likely a bot: pretend success and quietly drop it.
+      document.getElementById("feedback-text").value = "";
+      close(document.getElementById("feedback-overlay"));
+      toast("Thanks!");
+      return;
+    }
+
+    var title = (type === "bug" ? "Bug: " : "Feature: ") + text.slice(0, 60).replace(/\s+/g, " ");
+    var body = text
+      + "\n\n---\nPet #" + PUZZLE_NO
+      + "\n" + navigator.userAgent;
+
     document.getElementById("feedback-text").value = "";
     close(document.getElementById("feedback-overlay"));
-    toast("Opening GitHub to file it — thanks!");
+
+    if (!FEEDBACK_ENDPOINT || FEEDBACK_ENDPOINT.indexOf("YOUR_SUBDOMAIN") !== -1) {
+      openGithubIssueFallback(type, title, body);
+      return;
+    }
+
+    toast("Sending feedback…");
+    fetch(FEEDBACK_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: type, text: text, puzzleNo: PUZZLE_NO, userAgent: navigator.userAgent })
+    }).then(function (res) {
+      if (!res.ok) { throw new Error("bad response"); }
+      toast("Thanks — got it!");
+    }).catch(function () {
+      openGithubIssueFallback(type, title, body);
+    });
   });
 
   document.querySelectorAll("[data-close]").forEach(function (b) {
@@ -1435,18 +1782,29 @@
 
   migrateOldState();
   buildKeyboard();
-  loadPuzzle(REAL_DATE_KEY);
+  loadPuzzle(REAL_DATE_KEY, { silent: true });
 
   window.addEventListener("resize", sizeBoard);
   window.addEventListener("orientationchange", function () { setTimeout(sizeBoard, 150); });
 
-  // First-time visitors get the rules automatically.
-  try {
-    if (!localStorage.getItem("petle-seen-help")) {
-      open(document.getElementById("help-overlay"));
-      localStorage.setItem("petle-seen-help", "1");
-    }
-  } catch (e) { /* ignore */ }
+  // First-time visitors get the rules automatically — but only after
+  // they've picked a name, so the two overlays never stack.
+  function maybeShowHelp() {
+    try {
+      if (!localStorage.getItem("petle-seen-help")) {
+        open(document.getElementById("help-overlay"));
+        localStorage.setItem("petle-seen-help", "1");
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  if (!getPlayerName()) {
+    open(document.getElementById("name-overlay"));
+  } else {
+    maybeShowHelp();
+  }
+
+  if (status !== "playing" && getPlayerName()) setTimeout(showEnd, 400);
 
   // If the tab is left open past midnight while looking at today's pet,
   // pick up the new one on return. Not while browsing a missed day —
